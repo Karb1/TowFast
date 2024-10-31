@@ -15,9 +15,54 @@ export default function Cadastro() {
     const [cnh, setCnh] = useState<string>('');
     const [userType, setUserType] = useState<string>('');
 
-    const handleCadastro = () => {
-        if (username && password && email && phone && (userType !== 'Guincho' || cnh)) {
-            Alert.alert('Cadastro bem-sucedido!');
+    const handleCadastro = async () => {
+        if (
+            username &&
+            password &&
+            password2 &&
+            email &&
+            phone &&
+            (userType !== 'Guincho' || cnh) &&
+            password === password2 // Verifica se as senhas coincidem
+        ) {
+            try {
+                const response = await fetch('http://192.168.15.13:3000/api/logar/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username,
+                        password,
+                        email,
+                        phone,
+                        cpfCnpj: doc, // Ajuste conforme esperado pela API
+                        licensePlate: placa,
+                        birthDate: Dtnasc,
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    Alert.alert('Cadastro bem-sucedido!', data.message || 'Você está cadastrado com sucesso.');
+                    // Limpa os campos após o cadastro
+                    setUsername('');
+                    setPassword('');
+                    setPassword2('');
+                    setEmail('');
+                    setPhone('');
+                    setDoc('');
+                    setPlaca('');
+                    setDtnasc('');
+                    setCnh('');
+                    setUserType('');
+                } else {
+                    Alert.alert('Erro ao cadastrar', data.message || 'Verifique os dados e tente novamente.');
+                }
+            } catch (error) {
+                Alert.alert('Erro de rede', 'Não foi possível conectar ao servidor.');
+            }
         } else {
             Alert.alert('Por favor, preencha todos os campos.');
         }
@@ -165,7 +210,7 @@ const styles = StyleSheet.create({
         width: '100%',
         justifyContent: 'center',
         alignItems: 'center',
-        bottom:25        
+        bottom: 25        
     },
     linkText: {
         position: 'static',

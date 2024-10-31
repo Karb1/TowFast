@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import {
     View,
     Text,
@@ -14,16 +15,39 @@ import {
     Keyboard
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter, Stack } from 'expo-router';
+import { useRouter } from 'expo-router';
 
 export default function Home() {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
+    const [username, setUsername] = useState<string>(''); // Definindo tipo string
+    const [password, setPassword] = useState<string>(''); // Definindo tipo string
     const router = useRouter();
 
-    const handleLogin = () => {
+    const handleLogin = async () => {
         if (username && password) {
-            Alert.alert('Login bem-sucedido!');
+            try {
+                // Requisição POST para o servidor Node.js
+                const response = await axios.post('http://192.168.15.13:3000/login', {
+                    username,
+                    password
+                });
+
+                // Verifica se a resposta é 200 e contém dados em JSON
+                if (response.status === 200) {
+                    router.push('/home_guincho'); // Exibe os dados retornados
+                    // Redireciona para outra página após login bem-sucedido
+                    // router.push('/outraPagina'); // Descomente e altere para a página desejada
+                }
+            } catch (error: any) { // Tratamento de erro com tipo "any"
+                if (axios.isAxiosError(error)) {
+                    if (error.response) {
+                        Alert.alert(`Erro ao tentar fazer login: ${error.response.status} - ${error.response.data.message}`);
+                    } else {
+                        Alert.alert('Erro ao conectar com o servidor. Verifique se a API está em execução.');
+                    }
+                } else {
+                    Alert.alert('Erro desconhecido.');
+                }
+            }
         } else {
             Alert.alert('Por favor, preencha todos os campos.');
         }
@@ -48,19 +72,30 @@ export default function Home() {
                         colors={['rgba(196, 238, 242, 1)', 'rgba(122, 184, 191, 1)', 'rgba(2, 81, 89, 1)']}
                         style={styles.container}
                     >
+                        <View style={styles.linkContainer}>
+                            <TouchableOpacity onPress={handleLinkPressReset}>
+                                <Text style={[styles.linkText, styles.bold]}>Esqueci a senha</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={handleLinkPress}>
+                                <Text style={[styles.linkText, styles.bold]}>Cadastrar</Text>
+                            </TouchableOpacity>
+                        </View>
+
                         <Image
                             source={require('@/assets/images/logo.png')}
                             style={styles.logo}
                             resizeMode="contain"
                         />
+                        
                         <TextInput
-                            style={styles.inputLogin}
+                            style={styles.inputLoginNew}
                             placeholder="Digite seu login"
                             placeholderTextColor='rgba(2, 81, 89, 1)'
                             onChangeText={text => setUsername(text)}
                             value={username}
                             onSubmitEditing={handleLogin}
                         />
+
                         <TextInput
                             style={styles.inputSenha}
                             placeholder="Digite sua senha"
@@ -71,17 +106,9 @@ export default function Home() {
                             onSubmitEditing={handleLogin}
                         />
 
-                        <View style={styles.linkContainer}>
-                            <TouchableOpacity onPress={handleLinkPressReset}>
-                                <Text style={[styles.linkText, styles.bold]}>Esqueci a senha</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={handleLinkPress}>
-                                <Text style={[styles.linkText, styles.bold]}>Cadastrar</Text>
-                            </TouchableOpacity>
-                        </View>
-                        <Stack>
-                            <Stack.Screen name="cadastro" options={{ headerShown: false }} />
-                        </Stack>
+                        <TouchableOpacity style={styles.button} onPress={handleLogin}>
+                            <Text style={styles.buttonText}>Entrar</Text>
+                        </TouchableOpacity>                        
                     </LinearGradient>
                 </ScrollView>
             </KeyboardAvoidingView>
@@ -96,7 +123,7 @@ const styles = StyleSheet.create({
         alignItems: 'center'
     },
     logo: {
-        width: '75%',
+        width: '60%',
         height: undefined,
         aspectRatio: 1,
         marginBottom: 20,
@@ -104,12 +131,23 @@ const styles = StyleSheet.create({
     },
     inputLogin: {
         position: 'absolute',
-        bottom: 240,
+        bottom: 300,
         width: '80%',
         height: 55,
         backgroundColor: '#FCFBE0',
         borderRadius: 25,
-        paddingHorizontal: 20,
+        //paddingHorizontal: 20,
+        fontSize: 16,
+        textAlign: 'center'
+    },
+    inputLoginNew: {
+        position: 'absolute',
+        bottom: 250,
+        width: '80%',
+        height: 55,
+        backgroundColor: '#FCFBE0',
+        borderRadius: 25,
+        //paddingHorizontal: 20,
         fontSize: 16,
         textAlign: 'center'
     },
@@ -120,13 +158,28 @@ const styles = StyleSheet.create({
         height: 55,
         backgroundColor: '#FCFBE0',
         borderRadius: 25,
-        paddingHorizontal: 20,
+        //paddingHorizontal: 20,
         fontSize: 16,
         textAlign: 'center'
     },
+    button: {
+        position: 'absolute',
+        bottom: 100,
+        width: '80%',
+        height: 55,
+        backgroundColor: '#2B7A78',
+        borderRadius: 25,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    buttonText: {
+        color: '#FFFFFF',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
     linkContainer: {
         position: 'absolute',
-        bottom: 120,
+        bottom: 60,
         flexDirection: 'row',
         justifyContent: 'space-between',
         width: '60%',

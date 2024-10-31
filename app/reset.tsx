@@ -39,11 +39,47 @@ export default function Home() {
         }
     };
 
-    const handleLinkPress = () => {
+    const handleLinkPress = async () => {
         if (resetMethod === 'email' && doc && email) {
-            Alert.alert('Reset de senha enviado!');
+            try {
+                // Aqui você pode adicionar a lógica para enviar uma solicitação à sua API para resetar a senha
+                const response = await fetch('https://localhost:44347/api/resetpassword/email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ doc, email }),
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    Alert.alert('Reset de senha enviado para o email!');
+                } else {
+                    Alert.alert('Erro ao enviar email: ' + data.message);
+                }
+            } catch (error) {
+                Alert.alert('Erro de rede', 'Não foi possível conectar ao servidor.');
+            }
         } else if (resetMethod === 'sms' && doc && phone) {
-            Alert.alert('Reset de senha enviado!');
+            try {
+                // Aqui você pode adicionar a lógica para enviar uma solicitação à sua API para resetar a senha via SMS
+                const response = await fetch('http://192.168.15.13:3000/api/resetpassword/sms', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ doc, phone }),
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    Alert.alert('Reset de senha enviado por SMS!');
+                } else {
+                    Alert.alert('Erro ao enviar SMS: ' + data.message);
+                }
+            } catch (error) {
+                Alert.alert('Erro de rede', 'Não foi possível conectar ao servidor.');
+            }
         } else {
             Alert.alert('Por favor, preencha todos os campos.');
         }
@@ -71,10 +107,7 @@ export default function Home() {
                                     style={[styles.radioButton, resetMethod === 'email' && styles.selected, { backgroundColor: resetMethod === 'email' ? 'rgba(2, 81, 89, 1)' : '#FFFDE3' }]}
                                     onPress={() => setResetMethod('email')}
                                 >
-                                    <Text style={[
-                                        styles.radioText,
-                                        { color: resetMethod === 'email' ? 'white' : 'rgba(2, 81, 89, 1)' },
-                                    ]}>
+                                    <Text style={[styles.radioText, { color: resetMethod === 'email' ? 'white' : 'rgba(2, 81, 89, 1)' }]}>
                                         E-mail
                                     </Text>
                                 </TouchableOpacity>
@@ -82,10 +115,7 @@ export default function Home() {
                                     style={[styles.radioButton, resetMethod === 'sms' && styles.selected, { backgroundColor: resetMethod === 'sms' ? 'rgba(2, 81, 89, 1)' : '#FFFDE3' }]}
                                     onPress={() => setResetMethod('sms')}
                                 >
-                                    <Text style={[
-                                        styles.radioText,
-                                        { color: resetMethod === 'sms' ? 'white' : 'rgba(2, 81, 89, 1)' },
-                                    ]}>
+                                    <Text style={[styles.radioText, { color: resetMethod === 'sms' ? 'white' : 'rgba(2, 81, 89, 1)' }]}>
                                         SMS
                                     </Text>
                                 </TouchableOpacity>
