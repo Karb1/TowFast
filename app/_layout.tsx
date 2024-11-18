@@ -27,10 +27,23 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="cadastro" options={{ headerShown: false }} />
-        <Stack.Screen name="reset" options={{ headerShown: false }} />
+      <Stack
+        screenOptions={{
+          headerShown: false, // Oculta o cabeçalho em todas as telas
+          presentation: 'transparentModal', // Aplica uma transição mais suave
+          animation: 'fade', // Define a animação como fade
+        }}
+      >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="cadastro" />
+        <Stack.Screen name="reset" />
+        <Stack.Screen name="document_guincho" />
+        <Stack.Screen name="document_motorista" />
+        <Stack.Screen name="home_guincho" />
+        <Stack.Screen name="home_motorista" />
+        <Stack.Screen name="home" />
+        <Stack.Screen name="map_screen" /> {/* Adicione a tela de mapa */}
+        <Stack.Screen name="help_request_screen" /> {/* Adicione a tela de solicitação de ajuda */}
       </Stack>
     </ThemeProvider>
   );

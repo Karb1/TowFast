@@ -11,63 +11,58 @@ export default function Cadastro() {
     const [phone, setPhone] = useState<string>('');
     const [doc, setDoc] = useState<string>('');
     const [placa, setPlaca] = useState<string>('');
+    const [modelo, setModelo] = useState<string>('');
     const [Dtnasc, setDtnasc] = useState<string>('');
     const [cnh, setCnh] = useState<string>('');
     const [userType, setUserType] = useState<string>('');
 
     const handleCadastro = async () => {
-        if (
-            username &&
-            password &&
-            password2 &&
-            email &&
-            phone &&
-            (userType !== 'Guincho' || cnh) &&
-            password === password2 // Verifica se as senhas coincidem
-        ) {
-            try {
-                const response = await fetch('http://192.168.15.13:3000/api/logar/register', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        username,
-                        password,
-                        email,
-                        phone,
-                        cpfCnpj: doc, // Ajuste conforme esperado pela API
-                        licensePlate: placa,
-                        birthDate: Dtnasc,
-                    }),
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    Alert.alert('Cadastro bem-sucedido!', data.message || 'Você está cadastrado com sucesso.');
-                    // Limpa os campos após o cadastro
-                    setUsername('');
-                    setPassword('');
-                    setPassword2('');
-                    setEmail('');
-                    setPhone('');
-                    setDoc('');
-                    setPlaca('');
-                    setDtnasc('');
-                    setCnh('');
-                    setUserType('');
-                } else {
-                    Alert.alert('Erro ao cadastrar', data.message || 'Verifique os dados e tente novamente.');
-                }
-            } catch (error) {
-                Alert.alert('Erro de rede', 'Não foi possível conectar ao servidor.');
+        try {
+            const bodyData = {
+                username,
+                password,
+                email,
+                phone,
+                cpfCnpj: doc,
+                licensePlate: placa,
+                modelVehicle: modelo,
+                birthDate: Dtnasc,
+                cnh: userType === 'Guincho' ? cnh : '', // Envia cnh, se necessário                
+                tipo: userType
+            };
+    
+            const response = await fetch('http://172.22.108.78:3000/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(bodyData),
+            });
+    
+            const data = await response.json();
+    
+            if (response.ok) {
+                Alert.alert('Cadastro bem-sucedido!', data.message || 'Você está cadastrado com sucesso.');
+                // Limpa os campos após o cadastro
+                setUsername('');
+                setPassword('');
+                setPassword2('');
+                setEmail('');
+                setPhone('');
+                setDoc('');
+                setPlaca('');
+                setModelo('');
+                setDtnasc('');
+                setCnh('');
+                setUserType('');
+            } else {
+                Alert.alert('Erro ao cadastrar', data.message || 'Verifique os dados e tente novamente.');
             }
-        } else {
-            Alert.alert('Por favor, preencha todos os campos.');
+        } catch (error) {
+            Alert.alert('Erro de rede', 'Não foi possível conectar ao servidor.');
         }
-    };
-
+    };    
+        
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <KeyboardAvoidingView
@@ -135,6 +130,11 @@ export default function Cadastro() {
                             <InputField
                                 placeholder="Placa"
                                 onChangeText={(text: string) => setPlaca(text)}
+                                value={placa}
+                            />
+                            <InputField
+                                placeholder='Modelo Veiculo'
+                                onChangeText={(text: string) => setModelo(text)}
                                 value={placa}
                             />
                             <InputField

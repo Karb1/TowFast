@@ -13,7 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import Icon from 'react-native-vector-icons/Ionicons'; // Importação de ícones
 
-export default function MainScreen() {
+const MainScreen: React.FC = () => {
     const router = useRouter();
 
     const handleLinkPressHelpDesk = () => {
@@ -22,6 +22,14 @@ export default function MainScreen() {
 
     const handleLinkPressInfo = () => {
         router.push('/document_motorista');
+    };
+
+    const handleLinkReturn = () => {
+        router.push('/home');
+    };
+
+    const handleLinkPressHelp = () => {
+        router.push('/mapa_motorista');
     };
 
     return (
@@ -41,13 +49,13 @@ export default function MainScreen() {
                     />
                     {/* Linha 1 */}
                     <View style={styles.row}>
-                        <TouchableOpacity style={styles.box}>
-                            <Icon name="search" size={50} color="#000" />
+                        <TouchableOpacity style={styles.box} onPress={handleLinkPressHelp}>
+                            <Icon name="search" size={50} color="#FAF3F3" />
                             <Text style={styles.boxText}>Localizar</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.box}>
-                            <Icon name="book" size={50} color="#000" />
+                            <Icon name="book" size={50} color="#FAF3F3" />
                             <Text style={styles.boxText}>Política e Tutorial</Text>
                         </TouchableOpacity>
                     </View>
@@ -55,18 +63,18 @@ export default function MainScreen() {
                     {/* Linha 2 */}
                     <View style={styles.row}>
                         <TouchableOpacity style={styles.box} onPress={handleLinkPressHelpDesk}>
-                            <Icon name="headset" size={50} color="#000" />
+                            <Icon name="headset" size={50} color="#FAF3F3" />
                             <Text style={styles.boxText}>HelpDesk</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.box} onPress={handleLinkPressInfo}>
-                            <Icon name="information-circle" size={50} color="#000" />
+                            <Icon name="information-circle" size={50} color="#FAF3F3" />
                             <Text style={styles.boxText}>Informações</Text>
                         </TouchableOpacity>
                     </View>
 
                     {/* Botão de Sair */}
-                    <TouchableOpacity style={styles.logoutButton}>
+                    <TouchableOpacity style={styles.logoutButton} onPress={handleLinkReturn}>
                         <Text style={styles.logoutText}>Sair</Text>
                     </TouchableOpacity>
                 </LinearGradient>
@@ -80,7 +88,8 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
+        padding: 20, // Adiciona padding para evitar que o conteúdo se sobreponha
     },
     logo: {
         width: '60%',
@@ -92,6 +101,8 @@ const styles = StyleSheet.create({
     row: {
         flexDirection: 'row',
         marginBottom: 30,
+        flexWrap: 'wrap', // Permite que os itens se ajustem conforme a largura da tela
+        justifyContent: 'center', // Centraliza as caixas
     },
     box: {
         backgroundColor: '#FCFBE0',
@@ -123,3 +134,4 @@ const styles = StyleSheet.create({
     }
 });
 
+export default MainScreen;

@@ -43,7 +43,7 @@ export default function Home() {
         if (resetMethod === 'email' && doc && email) {
             try {
                 // Aqui você pode adicionar a lógica para enviar uma solicitação à sua API para resetar a senha
-                const response = await fetch('https://localhost:44347/api/resetpassword/email', {
+                const response = await fetch('https://192.168.15.13:3000/resetpassword/email', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -63,7 +63,7 @@ export default function Home() {
         } else if (resetMethod === 'sms' && doc && phone) {
             try {
                 // Aqui você pode adicionar a lógica para enviar uma solicitação à sua API para resetar a senha via SMS
-                const response = await fetch('http://192.168.15.13:3000/api/resetpassword/sms', {
+                const response = await fetch('http://192.168.15.13:3000/resetpassword/sms', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
