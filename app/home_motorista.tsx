@@ -12,12 +12,13 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import Icon from 'react-native-vector-icons/Ionicons'; // Importação de ícones
+import { useLocalSearchParams } from 'expo-router';
 
 const MainScreen: React.FC = () => {
     const router = useRouter();
-
+    const { userId, idEndereco } = useLocalSearchParams();
     const handleLinkPressHelpDesk = () => {
-        router.push('/helpdesk');
+        router.push('/home');
     };
 
     const handleLinkPressInfo = () => {
@@ -29,7 +30,7 @@ const MainScreen: React.FC = () => {
     };
 
     const handleLinkPressHelp = () => {
-        router.push('/mapa_motorista');
+        router.push(`/solicitacao?userId=${userId}&idEndereco=${idEndereco}`);
     };
 
     return (

@@ -17,30 +17,35 @@ export default function Cadastro() {
     const [userType, setUserType] = useState<string>('');
 
     const handleCadastro = async () => {
+        if (password !== password2) {
+            Alert.alert('Erro', 'As senhas não coincidem.');
+            return;
+        }
+
+        const bodyData = {
+            username,
+            password,
+            email,
+            phone,
+            CPF_CNPJ: doc,
+            licensePlate: placa,
+            modelo: modelo,
+            birthDate: new Date(Dtnasc).toISOString(), // Convertendo a data para o formato correto
+            cnh: userType === 'Motorista' ? '' : cnh, // CNH vazio se for Motorista
+            tipo: userType
+        };
+
         try {
-            const bodyData = {
-                username,
-                password,
-                email,
-                phone,
-                cpfCnpj: doc,
-                licensePlate: placa,
-                modelVehicle: modelo,
-                birthDate: Dtnasc,
-                cnh: userType === 'Guincho' ? cnh : '', // Envia cnh, se necessário                
-                tipo: userType
-            };
-    
-            const response = await fetch('http://172.22.108.78:3000/register', {
+            const response = await fetch('http://192.168.15.13:3000/register', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(bodyData),
             });
-    
+
             const data = await response.json();
-    
+
             if (response.ok) {
                 Alert.alert('Cadastro bem-sucedido!', data.message || 'Você está cadastrado com sucesso.');
                 // Limpa os campos após o cadastro
@@ -61,7 +66,7 @@ export default function Cadastro() {
         } catch (error) {
             Alert.alert('Erro de rede', 'Não foi possível conectar ao servidor.');
         }
-    };    
+    };
         
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -135,7 +140,7 @@ export default function Cadastro() {
                             <InputField
                                 placeholder='Modelo Veiculo'
                                 onChangeText={(text: string) => setModelo(text)}
-                                value={placa}
+                                value={modelo}
                             />
                             <InputField
                                 placeholder="Data Nascimento"
@@ -149,10 +154,10 @@ export default function Cadastro() {
                                     value={cnh}
                                 />
                             )}
+                            <TouchableOpacity onPress={handleCadastro} style={styles.button}>
+                                <Text style={[styles.linkText, styles.bold]}>Confirmar</Text>
+                            </TouchableOpacity>
                         </View>
-                        <TouchableOpacity onPress={handleCadastro} style={styles.button}>
-                            <Text style={[styles.linkText, styles.bold]}>Confirmar</Text>
-                        </TouchableOpacity>
                     </View>
                 </ScrollView>    
             </KeyboardAvoidingView>
@@ -222,6 +227,6 @@ const styles = StyleSheet.create({
         fontSize: 18
     },
     button: {
-        bottom: -45,
+        bottom: -1,
     }
 });

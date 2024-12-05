@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useRoute } from '@react-navigation/native';
 import axios from 'axios';
 import {
     View,
@@ -20,16 +19,16 @@ import { useRouter } from 'expo-router';
 
 export default function LoginSteps() {
     const [step, setStep] = useState(1);
-    const [username, setUsername] = useState('');
+    const [email, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const router = useRouter();
 
     const handleNext = async () => {
         if (step === 1) {
-            if (username) {
+            if (email) {
                 try {
-                    const response = await axios.post('http://172.22.108.78:3000/user', {
-                        username: username
+                    const response = await axios.post('http://192.168.15.13:3000/user', {
+                        username: email
                     }, {
                         headers: {
                             'Content-Type': 'application/json'
@@ -58,10 +57,10 @@ export default function LoginSteps() {
 
     const handleLogin = async () => {
         try {
-            console.log('Tentando fazer login com:', { username, password });
+            console.log('Tentando fazer login com:', { email, password });
     
-            const response = await axios.post('http://172.22.108.78:3000/login', {
-                username: username,
+            const response = await axios.post('http://192.168.15.13:3000/login', {
+                email: email,
                 password: password
             }, {
                 headers: {
@@ -70,13 +69,13 @@ export default function LoginSteps() {
             });
     
             if (response.status === 200) {
-                const { id, tipo } = response.data; // Extraindo o ID e tipo da resposta
+                const { id, tipo, id_Endereco } = response.data; // Extraindo o ID e tipo da resposta
     
                 // Navega para a tela apropriada com base no tipo
                 if (tipo === 'Motorista') {
-                    router.push(`/home_motorista?userId=${id}`); // Passa o ID como parâmetro na URL
+                    router.push(`/home_motorista?userId=${id}&idEndereco=${id_Endereco}`); // Passa o ID e id_Endereco como parâmetros na URL
                 } else if (tipo === 'Guincho') {
-                    router.push(`/home_guincho?userId=${id}`); // Passa o ID como parâmetro na URL
+                    router.push(`/home_guincho?userId=${id}&idEndereco=${id_Endereco}`); // Passa o ID e id_Endereco como parâmetros na URL
                 } else {
                     Alert.alert('Tipo de usuário desconhecido.');
                 }
@@ -128,7 +127,7 @@ export default function LoginSteps() {
                                 placeholder="Digite seu login"
                                 placeholderTextColor='rgba(2, 81, 89, 1)'
                                 onChangeText={text => setUsername(text)}
-                                value={username}
+                                value={email}
                             />
                         )}
 

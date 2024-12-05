@@ -42,8 +42,7 @@ export default function RootLayout() {
         <Stack.Screen name="home_guincho" />
         <Stack.Screen name="home_motorista" />
         <Stack.Screen name="home" />
-        <Stack.Screen name="map_screen" /> {/* Adicione a tela de mapa */}
-        <Stack.Screen name="help_request_screen" /> {/* Adicione a tela de solicitação de ajuda */}
+        <Stack.Screen name="Msolicitacao" />
       </Stack>
     </ThemeProvider>
   );

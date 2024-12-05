@@ -9,198 +9,250 @@ const PORT = 3000;
 app.use(express.json());
 app.use(cors());
 
+// Configuração do agente HTTPS
 const httpsAgent = new https.Agent({
-    rejectUnauthorized: false, // Ignorar certificado inválido
+    rejectUnauthorized: false, // Ignorar certificados SSL inválidos
 });
 
-// Endpoint para verificar se o usuário existe
+// URL base da API C#
+const BASE_API_URL = 'https://localhost:44347/api/Logar';
+
+// Função utilitária para chamadas à API C#
+const callApi = async (endpoint, method, body) => {
+    const url = `${BASE_API_URL}/${endpoint}`;
+    const options = {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        agent: httpsAgent,
+    };
+
+    const response = await fetch(url, options);
+    const responseText = await response.text();
+
+    try {
+        return { status: response.status, data: JSON.parse(responseText) };
+    } catch {
+        return { status: response.status, data: responseText }; // Caso não seja JSON
+    }
+};
+
+// Endpoint: Verificar se o usuário existe
 app.post('/user', async (req, res) => {
     const { username } = req.body;
 
-    try {
-        const response = await fetch('https://localhost:44347/api/Logar/user', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username }),
-            agent: httpsAgent, // Configura o agente HTTPS
-        });
+    if (!username) {
+        return res.status(400).json({ message: 'O campo "username" é obrigatório.' });
+    }
 
-        if (!response.ok) {
-            return res.status(response.status).json({ message: 'Usuário não encontrado' });
+    try {
+        const { status, data } = await callApi('user', 'POST', { username });
+
+        if (status === 404) {
+            return res.status(404).json({ message: 'Usuário não encontrado.' });
         }
 
-        const data = await response.json();
-        res.status(200).json(data); // Envia a resposta para o React Native
+        res.status(200).json(data);
     } catch (error) {
         console.error('Erro ao conectar com a API:', error);
-        res.status(500).json({ message: 'Erro ao conectar com o servidor', error: error.message });
+        res.status(500).json({ message: 'Erro ao conectar com o servidor.', error: error.message });
     }
 });
 
-// Endpoint para login
+// Endpoint: Login
 app.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
-    try {
-        const response = await fetch('https://localhost:44347/api/Logar/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password }),
-            agent: httpsAgent, // Configura o agente HTTPS
-        });
+    if (!email || !password) {
+        return res.status(400).json({ message: 'Os campos "email" e "password" são obrigatórios.' });
+    }
 
-        if (!response.ok) {
-            return res.status(response.status).json({ message: 'Erro na autenticação' });
+    try {
+        const { status, data } = await callApi('login', 'POST', { email, password });
+
+        if (status === 401) {
+            return res.status(401).json({ message: 'Erro na autenticação.' });
         }
 
-        const data = await response.json();
-
-        // Verifica se o campo tipo está presente e o adiciona à resposta
-        const responseData = {
-            id: data.id,
-            id_endereco: data.id_Endereco,
-            id_veiculo: data.id_Veiculo,
-            email: data.email,
-            message: data.message,
-            tipo: data.tipo // Adiciona o campo tipo aqui
-        };
-
-        res.status(200).json(responseData);
+        res.status(200).json(data);
     } catch (error) {
         console.error('Erro ao conectar com a API:', error);
-        res.status(500).json({ message: 'Erro ao conectar com o servidor', error: error.message });
+        res.status(500).json({ message: 'Erro ao conectar com o servidor.', error: error.message });
     }
 });
 
-// Endpoint para registro
+// Endpoint: Registro de usuário
 app.post('/register', async (req, res) => {
     const {
-        username = '', // Define como vazio se não estiver preenchido
-        password = '',
-        email = '',
-        phone = '',
-        cpfCnpj = '',
-        licensePlate = '',
-        modelVehicle = '',
-        birthDate = '',
-        cnh = '', // Define como vazio se não estiver preenchido
-        tipo = ''
+        username,
+        password,
+        email,
+        phone,
+        CPF_CNPJ,
+        licensePlate,
+        modelo,
+        birthDate,
+        cnh,
+        tipo,
     } = req.body;
 
+    if (!username || !password || !email || !tipo) {
+        return res.status(400).json({ message: 'Os campos obrigatórios: username, password, email e tipo.' });
+    }
+
     try {
-        // Define os dados que serão enviados para a API
-        const bodyData = {
+        const { status, data } = await callApi('register', 'POST', {
             username,
             password,
             email,
             phone,
-            cpF_CNPJ: cpfCnpj, // Mapeando cpfCnpj para cpF_CNPJ
+            CPF_CNPJ,
             licensePlate,
-            modelVehicle,
+            modelo,
             birthDate,
-            cnh: tipo === 'Motorista' ? '' : cnh, // cnh será vazio se tipo for "Motorista"
-            tipo
-        };
-
-        const response = await fetch('https://localhost:44347/api/Logar/register', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(bodyData),
-            agent: httpsAgent, // Configura o agente HTTPS
+            cnh: tipo === 'Motorista' ? '' : cnh,
+            tipo,
         });
-        
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Erro ao registrar o usuário:', errorData);
-            return res.status(response.status).json({ message: 'Erro ao registrar o usuário', error: errorData });
+
+        if (status >= 400) {
+            return res.status(status).json({ message: 'Erro ao registrar o usuário.', error: data });
         }
 
-        const data = await response.json();
-        res.status(201).json(data);
+        res.status(200).json(data);
     } catch (error) {
         console.error('Erro ao conectar com a API:', error);
-        res.status(500).json({ message: 'Erro ao conectar com o servidor', error: error.message });
+        res.status(500).json({ message: 'Erro ao conectar com o servidor.', error: error.message });
     }
 });
 
-// Endpoint para atualizar senha
+// Endpoint: Atualizar senha
 app.put('/updatepassword', async (req, res) => {
     const { username, newPassword } = req.body;
 
-    try {
-        const response = await fetch('https://localhost:44347/api/Logar/updatePassword', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, newPassword }),
-            agent: httpsAgent, // Configura o agente HTTPS
-        });
+    if (!username || !newPassword) {
+        return res.status(400).json({ message: 'Os campos "username" e "newPassword" são obrigatórios.' });
+    }
 
-        if (!response.ok) {
-            const errorMessage = await response.text();
-            return res.status(response.status).json({ message: 'Erro ao atualizar a senha', errorMessage});
+    try {
+        const { status, data } = await callApi('updatePassword', 'PUT', { username, newPassword });
+
+        if (status >= 400) {
+            return res.status(status).json({ message: 'Erro ao atualizar a senha.', error: data });
         }
 
-        const responseText = await response.text();
-        res.status(200).json({ message: responseText });
-
+        res.status(200).json({ message: 'Senha atualizada com sucesso.' });
     } catch (error) {
         console.error('Erro ao conectar com a API:', error);
-        res.status(500).json({ message: 'Erro ao conectar com o servidor', error: error.message });
+        res.status(500).json({ message: 'Erro ao conectar com o servidor.', error: error.message });
     }
 });
 
-
+// Endpoint: Atualizar localização
 app.put('/updatelocal', async (req, res) => {
-    const {id_Endereco, local_real_time, lat_long} = req.body;
+    const { id_Endereco, local_real_time, lat_long } = req.body;
 
-    try{
-        const response = await fetch('https://localhost:44347/api/Logar/atualizarlocalrealtime', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_Endereco, local_real_time, lat_long}),
-            agent: httpsAgent, // Configura o agente HTTPS
-        });
-
-        if (!response.ok) {
-            return res.status(response.status).json({ message: 'Erro para atualizar status'});
-        }
-
-        const responseText = await response.text();
-        res.status(200).json({ message: responseText });       
-    } catch (error){
-        console.error('Erro ao conectar com a API:', error);
-        res.status(500).json({ message: 'Erro ao conectar com o servidor', error: error.message})
+    if (!id_Endereco || !local_real_time || !lat_long) {
+        return res.status(400).json({ message: 'Os campos id_Endereco, local_real_time e lat_long são obrigatórios.' });
     }
 
-}
-)
-app.put('/updatestatus', async (req, res) => {
-    const {id_cliente, status, ultimoStatus} = req.body;
-
     try {
-        const response = await fetch('https://localhost:44347/api/Logar/AtualizaStatusGuincho', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_cliente, status, ultimoStatus }),
-            agent: httpsAgent, // Configura o agente HTTPS
-        });
+        const { status, data } = await callApi('atualizarlocalrealtime', 'PUT', { id_Endereco, local_real_time, lat_long });
 
-        if (!response.ok) {
-            const errorMessage = await response.text();
-            return res.status(response.status).json({ message: 'Erro ao atualizar a senha', errorMessage});
+        if (status >= 400) {
+            return res.status(status).json({ message: 'Erro ao atualizar localização.', error: data });
         }
 
-        const responseText = await response.text();
-        res.status(200).json({ message: responseText });
-
+        res.status(200).json({ message: 'Localização atualizada com sucesso.' });
     } catch (error) {
         console.error('Erro ao conectar com a API:', error);
-        res.status(500).json({ message: 'Erro ao conectar com o servidor', error: error.message });
+        res.status(500).json({ message: 'Erro ao conectar com o servidor.', error: error.message });
     }
 });
 
+// Endpoint: Atualizar status do guincho
+app.put('/updatestatus', async (req, res) => {
+    const { id_cliente, status, ultimoStatus } = req.body;
+
+    if (!id_cliente || status === undefined || !ultimoStatus) {
+        return res.status(400).json({ message: 'Os campos id_cliente, status e ultimoStatus são obrigatórios.' });
+    }
+
+    try {
+        const { status: responseStatus, data } = await callApi('AtualizaStatusGuincho', 'PUT', { id_cliente, status, ultimoStatus });
+
+        if (responseStatus >= 400) {
+            return res.status(responseStatus).json({ message: 'Erro ao atualizar o status.', error: data });
+        }
+
+        res.status(200).json({ message: 'Status atualizado com sucesso.' });
+    } catch (error) {
+        console.error('Erro ao conectar com a API:', error);
+        res.status(500).json({ message: 'Erro ao conectar com o servidor.', error: error.message });
+    }
+});
+
+// Endpoint para obter guinchos ativos
+app.get('/guinchosativos', async (req, res) => {
+    try {
+        // Faz a chamada para a API externa
+        const { status, data } = await callApi('GetGuinchosAtivos', 'GET');
+
+        if (status >= 400) {
+            return res.status(status).json({ message: 'Erro ao buscar guinchos ativos.', error: data });
+        }
+
+        // Retorna a lista de guinchos ativos para o cliente
+        res.status(200).json(data);
+    } catch (error) {
+        console.error('Erro ao conectar com a API:', error);
+        res.status(500).json({ message: 'Erro ao conectar com o servidor.', error: error.message });
+    }
+});
+
+// Endpoint: Registrar pré-solicitação
+app.put('/preSolicitacao', async (req, res) => {
+    const { 
+        id_Motorista, 
+        id_Guincho, 
+        distancia, 
+        preco, 
+        latLongCliente, 
+        latLongGuincho, 
+        status 
+    } = req.body;
+
+    // Validação dos campos obrigatórios
+    if (!id_Motorista || !id_Guincho || !distancia || !preco || !latLongCliente || !latLongGuincho || !status) {
+        return res.status(400).json({ message: 'Todos os campos são obrigatórios.' });
+    }
+
+    // Corpo da solicitação a ser enviada para a API C#
+    const requestPayload = {
+        id_Motorista,
+        id_Guincho,
+        distancia,
+        preco,
+        latLongCliente,
+        latLongGuincho,
+        status
+    };
+
+    try {
+        // Chama a API C# para registrar a pré-solicitação
+        const { status, data } = await callApi('preSolicitacao', 'PUT', requestPayload);
+
+        // Verifica se a resposta da API C# foi bem-sucedida
+        if (status === 200) {
+            res.status(200).json({ message: 'Pré-solicitação registrada com sucesso.' });
+        } else {
+            // Caso a API C# retorne um erro, passa a mensagem para o cliente
+            res.status(status).json({ message: 'Erro ao registrar a pré-solicitação.', error: data });
+        }
+    } catch (error) {
+        console.error('Erro ao conectar com a API:', error);
+        res.status(500).json({ message: 'Erro ao conectar com o servidor.', error: error.message });
+    }
+});
 
 // Inicia o servidor Node.js
 app.listen(PORT, () => {

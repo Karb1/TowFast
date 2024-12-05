@@ -1,94 +1,152 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, Button, Alert, StyleSheet } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import Geolocation from 'react-native-geolocation-service';
 import axios from 'axios';
 
-export default function GuinchoMapScreen() {
-  const [drivers, setDrivers] = useState<any[]>([]); // Lista de motoristas que solicitaram ajuda
-  const [region, setRegion] = useState({
-    latitude: -23.55052,
-    longitude: -46.633308,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
-  });
+type Guincho = {
+  id: number;
+  nome: string;
+  modelo: string;
+  telefone: string;
+  latitude: number;
+  longitude: number;
+  distancia?: number;
+  valor?: number;
+};
 
-  // Função para carregar motoristas que solicitaram ajuda
-  const loadDriverRequests = async () => {
-    try {
-      const response = await axios.get('API_URL/motoristas-solicitaram-ajuda');
-      setDrivers(response.data);
-    } catch (error) {
-      console.error('Erro ao carregar motoristas', error);
-      Alert.alert('Erro', 'Não foi possível carregar as solicitações de ajuda.');
+const GuinchosDisponiveis = () => {
+  const [guinchos, setGuinchos] = useState<Guincho[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [clienteLocation, setClienteLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+
+  // Solicitar permissões de localização
+  const requestLocationPermission = async () => {
+    const permissionGranted = await Geolocation.requestAuthorization('whenInUse');
+    return permissionGranted === 'granted';
+  };
+
+  // Obter localização atual
+  const getClienteLocation = async () => {
+    const permissionGranted = await requestLocationPermission();
+    if (permissionGranted) {
+      Geolocation.getCurrentPosition(
+        (position) => {
+          setClienteLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.error('Erro ao obter localização:', error);
+          setClienteLocation(null);
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+      );
     }
   };
 
-  // Função para aceitar uma solicitação de ajuda
-  const acceptRequest = async (driverId: string) => {
+  // Calcular a distância entre dois pontos geográficos (Haversine formula)
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const rad = Math.PI / 180;
+    const R = 6371; // Raio da Terra em km
+    const dLat = (lat2 - lat1) * rad;
+    const dLon = (lon2 - lon1) * rad;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c; // em km
+    return distance;
+  };
+
+  // Buscar guinchos ativos da API
+  const fetchGuinchos = async () => {
+    if (!clienteLocation) return;
+
     try {
-      const response = await axios.post('API_URL/aceitar-ajuda', {
-        driverId,
+      // 1. Buscar guinchos ativos da API
+      const response = await axios.get('http://192.168.15.13:3000/guinchosativos'); // Altere para o seu endpoint real
+      const guinchosData: Guincho[] = response.data;
+
+      // 2. Calcular a distância e valor
+      const guinchosComDistancia = guinchosData.map((guincho) => {
+        const distancia = calculateDistance(
+          clienteLocation.latitude,
+          clienteLocation.longitude,
+          guincho.latitude,
+          guincho.longitude
+        );
+
+        // 3. Calcular o valor da corrida
+        const valor = distancia * 100; // 100 reais por km
+
+        return { ...guincho, distancia, valor };
       });
 
-      if (response.status === 200) {
-        Alert.alert('Sucesso', 'Solicitação de ajuda aceita.');
-        loadDriverRequests(); // Recarregar lista de solicitações após aceitar
-      } else {
-        Alert.alert('Erro', 'Não foi possível aceitar a solicitação.');
-      }
+      setGuinchos(guinchosComDistancia);
     } catch (error) {
-      console.error('Erro ao aceitar solicitação', error);
-      Alert.alert('Erro', 'Ocorreu um erro ao aceitar a solicitação.');
+      console.error('Erro ao buscar guinchos ativos:', error);
+      Alert.alert('Erro', 'Não foi possível obter os guinchos ativos.');
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadDriverRequests();
+    getClienteLocation();
   }, []);
 
-  return (
-    <View style={{ flex: 1 }}>
-      <MapView
-        style={styles.map}
-        region={region}
-        onRegionChangeComplete={(newRegion) => setRegion(newRegion)}
-      >
-        {drivers.map((driver) => (
-          <Marker
-            key={driver.id}
-            coordinate={{
-              latitude: driver.latitude,
-              longitude: driver.longitude,
-            }}
-            title={`Motorista ${driver.name}`}
-            description={`Solicitação de ajuda`}
-          >
-            <View style={styles.markerContainer}>
-              <Text style={styles.markerText}>{driver.name}</Text>
-              <Button
-                title="Aceitar"
-                onPress={() => acceptRequest(driver.id)}
-                color="#4CAF50"
-              />
-            </View>
-          </Marker>
-        ))}
-      </MapView>
+  useEffect(() => {
+    if (clienteLocation) {
+      fetchGuinchos();
+    }
+  }, [clienteLocation]);
+
+  // Renderizar os cards de guinchos
+  const renderGuinchoCard = ({ item }: { item: Guincho }) => (
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>{item.nome}</Text>
+      <Text style={styles.cardText}>Modelo: {item.modelo}</Text>
+      <Text style={styles.cardText}>Telefone: {item.telefone}</Text>
+      <Text style={styles.cardText}>Distância: {item.distancia?.toFixed(2)} km</Text>
+      <Text style={styles.cardText}>Valor: R$ {item.valor?.toFixed(2)}</Text>
     </View>
   );
-}
+
+  return (
+    <View style={styles.container}>
+      {loading ? (
+        <ActivityIndicator size="large" color="#0000ff" />
+      ) : (
+        <FlatList
+          data={guinchos}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderGuinchoCard}
+        />
+      )}
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
-  map: {
+  container: {
     flex: 1,
+    padding: 20,
+    backgroundColor: '#fff',
   },
-  markerContainer: {
-    alignItems: 'center',
-    backgroundColor: 'white',
-    padding: 5,
-    borderRadius: 5,
+  card: {
+    padding: 15,
+    backgroundColor: '#f9f9f9',
+    marginBottom: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
-  markerText: {
+  cardTitle: {
+    fontSize: 18,
     fontWeight: 'bold',
   },
+  cardText: {
+    fontSize: 14,
+    marginVertical: 5,
+  },
 });
+
