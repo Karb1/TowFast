@@ -10,28 +10,48 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npm install
    ```
 1.1 
+   ```
    Install dependencies with document dependencias.txt 
-   
+   ```
+   ```
    npm install @babel/core@7.26.0
+   ```
    npm install @expo/vector-icons@14.0.4
+   ```
    npm install @react-native-community/geolocation@3.4.0
+   ```
    npm install @react-native-picker/picker@2.9.0
+   ```
    npm install @react-navigation/native@6.1.18
+   ```
    npm install hammerjs@2.0.46
+   ```
    npm install jest@29.5.14
+   ```
    npm install react-native-sqlite-storage@6.0.5
+   ```
    npm install react-native-vector-icons@6.4.18
+   ```
    npm install react-test-renderer@18.3.0
+   ```
    npm install react@18.3.12
+   ```
    npm install axios@1.7.7
+   ```
    npm install cors@2.8.5
+   ```
    npm install expo-constants@17.0.3
+   ```
    npm install expo-font@13.0.1
+   ```
    npm install expo-linear-gradient@14.0.1
+   ```
    npm install expo-linking@7.0.2
+   ```
    npm install expo-location@18.0.3
-   npm install expo-router@4.0.6
-   npm install expo-splash-screen@0.29.11
+   
+```npm install expo-router@4.0.6
+```npm install expo-splash-screen@0.29.11
    npm install expo-status-bar@2.0.0
    npm install expo-system-ui@4.0.3
    npm install expo-web-browser@14.0.1
