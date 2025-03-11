@@ -23,14 +23,14 @@ export default function Cadastro() {
         }
 
         const bodyData = {
-            username,
-            password,
-            email,
-            phone,
+            username: username,
+            password: password,
+            email: email,
+            phone: phone,
             CPF_CNPJ: doc,
             licensePlate: placa,
             modelo: modelo,
-            birthDate: new Date(Dtnasc).toISOString(), // Convertendo a data para o formato correto
+            birthDate: new Date(Dtnasc).toISOString().split("T")[0], // Convertendo a data para o formato correto
             cnh: userType === 'Motorista' ? '' : cnh, // CNH vazio se for Motorista
             tipo: userType
         };
@@ -61,7 +61,8 @@ export default function Cadastro() {
                 setCnh('');
                 setUserType('');
             } else {
-                Alert.alert('Erro ao cadastrar', data.message || 'Verifique os dados e tente novamente.');
+                //Alert.alert('Erro ao cadastrar', data.message || 'Verifique os dados e tente novamente.');
+                console.error(JSON.stringify(bodyData));
             }
         } catch (error) {
             Alert.alert('Erro de rede', 'Não foi possível conectar ao servidor.');

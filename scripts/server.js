@@ -96,26 +96,36 @@ app.post('/register', async (req, res) => {
         tipo,
     } = req.body;
 
+    // Log do JSON recebido na requisição
+    console.log('JSON recebido:', JSON.stringify(req.body, null, 2));
+
     if (!username || !password || !email || !tipo) {
         return res.status(400).json({ message: 'Os campos obrigatórios: username, password, email e tipo.' });
     }
 
     try {
-        const { status, data } = await callApi('register', 'POST', {
-            username,
-            password,
-            email,
-            phone,
-            CPF_CNPJ,
-            licensePlate,
-            modelo,
-            birthDate,
+        const requestBody = {
+            username: username,
+            password: password,
+            email: email,
+            phone: phone,
+            CPF_CNPJ: CPF_CNPJ,
+            licensePlate: licensePlate,
+            modelo: modelo,
+            birthDate: birthDate,
             cnh: tipo === 'Motorista' ? '' : cnh,
-            tipo,
-        });
+            tipo: tipo,
+        };
+
+        // Log do JSON que será enviado para a API externa
+        console.log('JSON enviado para API:', JSON.stringify(requestBody, null, 2));
+
+        const { status, data } = await callApi('register', 'POST', requestBody);
 
         if (status >= 400) {
-            return res.status(status).json({ message: 'Erro ao registrar o usuário.', error: data });
+            console.error('Erro ao registrar o usuário:', data);
+            console.error('JSON da requisição:', JSON.stringify(req.body, null, 2));
+            return res.status(status).json({ message: 'Erro ao registrar o usuário.', error: data }); 
         }
 
         res.status(200).json(data);
@@ -210,7 +220,7 @@ app.get('/guinchosativos', async (req, res) => {
 });
 
 // Endpoint: Registrar pré-solicitação
-app.put('/preSolicitacao', async (req, res) => {
+app.post('/preSolicitacao', async (req, res) => {
     const { 
         id_Motorista, 
         id_Guincho, 
@@ -227,19 +237,21 @@ app.put('/preSolicitacao', async (req, res) => {
     }
 
     // Corpo da solicitação a ser enviada para a API C#
-    const requestPayload = {
-        id_Motorista,
-        id_Guincho,
-        distancia,
-        preco,
-        latLongCliente,
-        latLongGuincho,
-        status
+    const requestBody = {
+        id_Motorista: id_Motorista,
+        id_Guincho: id_Guincho,
+        distancia: distancia,
+        preco: preco,
+        latLongCliente: latLongCliente,
+        latLongGuincho: latLongGuincho,
+        status: status
     };
 
+    // Log do JSON que será enviado para a API externa
+    console.log('JSON enviado para API:', JSON.stringify(requestBody, null, 2));
     try {
         // Chama a API C# para registrar a pré-solicitação
-        const { status, data } = await callApi('preSolicitacao', 'PUT', requestPayload);
+        const { status, data } = await callApi('preSolicitacao', 'POST', requestBody);
 
         // Verifica se a resposta da API C# foi bem-sucedida
         if (status === 200) {
