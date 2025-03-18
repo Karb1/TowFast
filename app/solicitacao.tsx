@@ -10,6 +10,7 @@ import {
     Alert,
 } from 'react-native';
 import axios, { AxiosError } from 'axios';
+import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { useLocalSearchParams } from 'expo-router';
 
@@ -21,6 +22,12 @@ const GuinchosScreen: React.FC = () => {
     const [distanceData, setDistanceData] = useState<{ [key: string]: any }>({});
     const [selectedGuincho, setSelectedGuincho] = useState<any | null>(null);
     const [isRequesting, setIsRequesting] = useState(false); // Para controlar o estado da solicitação
+    const { IdMotorista } = useLocalSearchParams();
+    const router = useRouter();
+
+    const voltarHome = () => {
+        router.push(`/home_motorista`);
+    };
 
     // Função para buscar guinchos da API
     const fetchGuinchos = async () => {
@@ -59,7 +66,12 @@ const GuinchosScreen: React.FC = () => {
 
     // Função para buscar os dados de distância e tempo da API
     const fetchDistanceData = async (guincho: any) => {
-        if (!location) return;
+        if (!location) {
+            console.error('Localização não definida');
+            return;
+        }
+        console.log(`Buscando distância entre ${location.latitude},${location.longitude} e ${guincho.lat_long}`);
+    
         try {
             const response = await axios.get('https://api.distancematrix.ai/maps/api/distancematrix/json', {
                 params: {
@@ -68,6 +80,8 @@ const GuinchosScreen: React.FC = () => {
                     key: 'FXUKUSVIBO2kQDwmQiMGZrO4RDsimxj2dax53JHLpPQdJBEvOjyqW77kltQdMJT9',
                 },
             });
+            console.log('Resposta da API:', response.data);
+    
             const result = response.data.rows[0].elements[0];
             if (result.status === 'OK') {
                 setDistanceData((prevData) => ({
@@ -79,11 +93,15 @@ const GuinchosScreen: React.FC = () => {
                         destinationAddress: response.data.destination_addresses[0],
                     },
                 }));
+            } else {
+                console.error('Erro na resposta:', result.status);
+                console.error('Guincho:', guincho.lat_long)
             }
         } catch (error) {
             console.error('Erro ao buscar dados de distância:', error);
         }
     };
+    
 
     // Efeito para buscar guinchos e localização na inicialização
     useEffect(() => {
@@ -100,16 +118,17 @@ const GuinchosScreen: React.FC = () => {
         }
     }, [location, guinchos]);
 
-    const requestGuincho = async () => {
-        const { userId } = useLocalSearchParams();
+    const requestGuincho = async (...params: any[]) => {
+
+        const [idGuincho, distancia, origem, destino] = params;
 
         const bodyData = {
-            id_Motorista: userId,
-            id_Guincho:'Pendente',  //item.id,
-            distancia: 'Pendente', //distanceData[item.id]?.distance,
-            preco: 'Pendente', //`R$ ${(50 + 100 * parseFloat(distanceData[item.id]?.distance.split(' ')[0])).toFixed(2)}`,
-            latLongCliente: 'Teste',//`${location.latitude},${location.longitude}`,
-            latLongGuincho: 'Pendente',//item.lat_long,
+            id_Motorista: IdMotorista,
+            id_Guincho: idGuincho,
+            distancia: distancia, //distanceData[item.id]?.distance,
+            preco: `R$ ${(150 + 1.6 *  parseFloat(distanceData[idGuincho]?.distance.split(' ')[0])).toFixed(2)}`,
+            latLongCliente: origem,
+            latLongGuincho: destino,
             status: 'Pendente'            
         }
 
@@ -121,8 +140,7 @@ const GuinchosScreen: React.FC = () => {
                 },
                 body: JSON.stringify(bodyData),
             });
-
-            const data = await response.json();
+            //const data = await response.json();
 
             if (response.ok) {
                 Alert.alert('solicitacao bem-sucedido!');
@@ -133,62 +151,7 @@ const GuinchosScreen: React.FC = () => {
         } catch (error) {
             Alert.alert('Erro de rede', 'Não foi possível conectar ao servidor.');
         }
-/*            
-    // Função para enviar a solicitação de guincho
-    const requestGuincho = async (item: any) => {
-        console.log(item);
-        const { userId, idEndereco } = useLocalSearchParams();
-        if (!location) return;
-        
-        setIsRequesting(true); // Inicia a solicitação
-
-        const bodyData = {
-            id_Motorista: userId,
-            id_Guincho: item.id,
-            distancia: distanceData[item.id]?.distance,
-            preco: `R$ ${(50 + 100 * parseFloat(distanceData[item.id]?.distance.split(' ')[0])).toFixed(2)}`,
-            latLongCliente: `${location.latitude},${location.longitude}`,
-            latLongGuincho: item.lat_long,
-            status: 'Pendente'            
-        }
-
-        const response = await fetch('http://192.168.15.13:3000/preSolicitacao', {
-            method: 'POST',
-            headers:{
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(bodyData),
-        })
-
-        const data = await response.json();
-
-        if(response.ok){
-            Alert.alert('Pré-Solicitacao enviada',data.message);
-        }
-        else{
-            console.error(JSON.stringify(bodyData));
-        }
-        /*
-        try {
-            // Envia os dados para a API
-            await axios.post('http://172.22.111.25:3000/preSolicitacao', {
-                id_Motorista: userId, // Exemplo, o ID do cliente deve vir do estado ou do banco de dados
-                id_Guincho: item.id,
-                distancia: distanceData[item.id]?.distance,
-                preco: `R$ ${(50 + 100 * parseFloat(distanceData[item.id]?.distance.split(' ')[0])).toFixed(2)}`,
-                latLongCliente: `${location.latitude},${location.longitude}`,
-                latLongGuincho: item.lat_long,
-                status: 'Pendente',
-            });
-
-            // Alterar o estado após envio
-            setIsRequesting(false);
-            alert('Solicitação enviada! Aguardando aceitação do guincho.');
-        } catch (error) {
-            console.error('Erro ao solicitar guincho:', error);
-            setIsRequesting(false);
-        }*/
-    };
+    }
 
     const renderCard = ({ item }: { item: any }) => {
         const data = distanceData[item.id];
@@ -199,17 +162,22 @@ const GuinchosScreen: React.FC = () => {
                 <Text style={styles.cardText}>Modelo: {item.modelo}</Text>
                 <Text style={styles.cardText}>Distância: {data?.distance || 'Calculando...'}</Text>
                 <Text style={styles.cardText}>Tempo: {data?.duration || 'Calculando...'}</Text>
-                <Text style={styles.cardText}>Origem: {data?.originAddress || 'Calculando...'}</Text>
-                <Text style={styles.cardText}>Destino: {data?.destinationAddress || 'Calculando...'}</Text>
+                <Text style={styles.cardText}>Preço: {`R$ ${(150 + 1.6 *  parseFloat(distanceData[item.id]?.distance.split(' ')[0])).toFixed(2)}` || 'Calculando...'}</Text>
                 {!isRequesting && (
                     <TouchableOpacity
                         style={styles.button}
-                        onPress={requestGuincho}
+                        onPress={() => requestGuincho(item.id,data?.distance,data?.originAddress,data?.destinationAddress)}
                     >
                         <Text style={styles.buttonText}>Solicitar</Text>
                     </TouchableOpacity>
                 )}
-            </View>
+                    <TouchableOpacity
+                        style={styles.button}
+                        onPress={voltarHome}
+                    >
+                        <Text style={styles.buttonText}>Voltar</Text>
+                    </TouchableOpacity>
+            </View>            
         );
     };
 

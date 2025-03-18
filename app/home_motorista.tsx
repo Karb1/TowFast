@@ -18,7 +18,7 @@ const MainScreen: React.FC = () => {
     const router = useRouter();
     const { userId, idEndereco } = useLocalSearchParams();
     const handleLinkPressHelpDesk = () => {
-        router.push('/home');
+        router.push('/home_guincho');
     };
 
     const handleLinkPressInfo = () => {
@@ -30,7 +30,7 @@ const MainScreen: React.FC = () => {
     };
 
     const handleLinkPressHelp = () => {
-        router.push(`/solicitacao?userId=${userId}&idEndereco=${idEndereco}`);
+        router.push(`/solicitacao?IdMotorista=${userId}`);
     };
 
     return (
@@ -51,12 +51,12 @@ const MainScreen: React.FC = () => {
                     {/* Linha 1 */}
                     <View style={styles.row}>
                         <TouchableOpacity style={styles.box} onPress={handleLinkPressHelp}>
-                            <Icon name="search" size={50} color="#FAF3F3" />
+                            <Icon name="search" size={50} color="#025159" />
                             <Text style={styles.boxText}>Localizar</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.box}>
-                            <Icon name="book" size={50} color="#FAF3F3" />
+                            <Icon name="book" size={50} color="#025159" />
                             <Text style={styles.boxText}>Política e Tutorial</Text>
                         </TouchableOpacity>
                     </View>
@@ -64,12 +64,12 @@ const MainScreen: React.FC = () => {
                     {/* Linha 2 */}
                     <View style={styles.row}>
                         <TouchableOpacity style={styles.box} onPress={handleLinkPressHelpDesk}>
-                            <Icon name="headset" size={50} color="#FAF3F3" />
+                            <Icon name="headset" size={50} color="#025159" />
                             <Text style={styles.boxText}>HelpDesk</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.box} onPress={handleLinkPressInfo}>
-                            <Icon name="information-circle" size={50} color="#FAF3F3" />
+                            <Icon name="information-circle" size={50} color="#025159" />
                             <Text style={styles.boxText}>Informações</Text>
                         </TouchableOpacity>
                     </View>
