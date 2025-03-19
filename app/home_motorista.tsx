@@ -30,7 +30,7 @@ const MainScreen: React.FC = () => {
     };
 
     const handleLinkPressHelp = () => {
-        router.push(`/solicitacao?IdMotorista=${userId}`);
+        router.push(`/pesquisa?IdMotorista=${userId}`);
     };
 
     return (

@@ -43,6 +43,7 @@ export default function RootLayout() {
         <Stack.Screen name="home_motorista" />
         <Stack.Screen name="home" />
         <Stack.Screen name="Msolicitacao" />
+        <Stack.Screen name="pesquisa" />
       </Stack>
     </ThemeProvider>
   );

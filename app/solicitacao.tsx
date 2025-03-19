@@ -8,11 +8,15 @@ import {
     TouchableOpacity,
     Modal,
     Alert,
+    SafeAreaView,
+    Platform,
 } from 'react-native';
 import axios, { AxiosError } from 'axios';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { useLocalSearchParams } from 'expo-router';
+import Icon from 'react-native-vector-icons/Ionicons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const GuinchosScreen: React.FC = () => {
     const [guinchos, setGuinchos] = useState<any[]>([]);
@@ -21,15 +25,14 @@ const GuinchosScreen: React.FC = () => {
     const [errorMsg, setErrorMsg] = useState<string>('');
     const [distanceData, setDistanceData] = useState<{ [key: string]: any }>({});
     const [selectedGuincho, setSelectedGuincho] = useState<any | null>(null);
-    const [isRequesting, setIsRequesting] = useState(false); // Para controlar o estado da solicitação
-    const { IdMotorista } = useLocalSearchParams();
+    const [isRequesting, setIsRequesting] = useState(false);
+    const { IdMotorista, LatPre, LongPre, enderecoatual } = useLocalSearchParams();
     const router = useRouter();
 
     const voltarHome = () => {
         router.push(`/home_motorista`);
     };
 
-    // Função para buscar guinchos da API
     const fetchGuinchos = async () => {
         try {
             const response = await axios.get('http://192.168.15.13:3000/guinchosativos');
@@ -49,7 +52,6 @@ const GuinchosScreen: React.FC = () => {
         }
     };
 
-    // Função para obter a localização do dispositivo
     const getLocation = async () => {
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
@@ -64,52 +66,56 @@ const GuinchosScreen: React.FC = () => {
         });
     };
 
-    // Função para buscar os dados de distância e tempo da API
     const fetchDistanceData = async (guincho: any) => {
         if (!location) {
             console.error('Localização não definida');
             return;
         }
-        console.log(`Buscando distância entre ${location.latitude},${location.longitude} e ${guincho.lat_long}`);
-    
+
         try {
             const response = await axios.get('https://api.distancematrix.ai/maps/api/distancematrix/json', {
                 params: {
-                    origins: `${location.latitude},${location.longitude}`,
-                    destinations: guincho.lat_long,
+                    origins: guincho.lat_long,
+                    destinations: `${location.latitude},${location.longitude}|${LatPre},${LongPre}`,
                     key: 'FXUKUSVIBO2kQDwmQiMGZrO4RDsimxj2dax53JHLpPQdJBEvOjyqW77kltQdMJT9',
                 },
             });
-            console.log('Resposta da API:', response.data);
-    
-            const result = response.data.rows[0].elements[0];
-            if (result.status === 'OK') {
-                setDistanceData((prevData) => ({
-                    ...prevData,
-                    [guincho.id]: {
-                        distance: result.distance.text,
-                        duration: result.duration.text,
-                        originAddress: response.data.origin_addresses[0],
-                        destinationAddress: response.data.destination_addresses[0],
-                    },
-                }));
-            } else {
-                console.error('Erro na resposta:', result.status);
-                console.error('Guincho:', guincho.lat_long)
-            }
+
+            const rows = response.data.rows || [];
+            let totalDistance = 0;
+            let totalDuration = 0;
+
+            rows.forEach((row: any) => {
+                row.elements.forEach((element: any) => {
+                    if (element.status === 'OK' && element.distance && element.duration) {
+                        totalDistance += element.distance.value;
+                        totalDuration += element.duration.value;
+                    }
+                });
+            });
+
+            const totalDistanceKm = (totalDistance / 1000).toFixed(2);
+            const totalDurationMin = Math.round(totalDuration / 60);
+
+            setDistanceData((prevData) => ({
+                ...prevData,
+                [guincho.id]: {
+                    totalDistance: `${totalDistanceKm} km`,
+                    totalDuration: `${totalDurationMin} mins`,
+                    originAddress: response.data.origin_addresses?.[0] || 'Origem desconhecida',
+                    destinationAddresses: response.data.destination_addresses || ['Destino desconhecido'],
+                },
+            }));
         } catch (error) {
             console.error('Erro ao buscar dados de distância:', error);
         }
     };
-    
 
-    // Efeito para buscar guinchos e localização na inicialização
     useEffect(() => {
         fetchGuinchos();
         getLocation();
     }, []);
 
-    // Efeito para buscar dados de distância para cada guincho
     useEffect(() => {
         if (location && guinchos.length > 0) {
             guinchos.forEach((guincho) => {
@@ -119,18 +125,19 @@ const GuinchosScreen: React.FC = () => {
     }, [location, guinchos]);
 
     const requestGuincho = async (...params: any[]) => {
+        const [idGuincho, distanceValue, origem, destino] = params;
 
-        const [idGuincho, distancia, origem, destino] = params;
+        const precoCalculado = 150 + (distanceValue ? parseFloat(distanceValue) * 10 : 0);
 
         const bodyData = {
             id_Motorista: IdMotorista,
             id_Guincho: idGuincho,
-            distancia: distancia, //distanceData[item.id]?.distance,
-            preco: `R$ ${(150 + 1.6 *  parseFloat(distanceData[idGuincho]?.distance.split(' ')[0])).toFixed(2)}`,
+            distancia: distanceValue,
+            preco: `R$ ${precoCalculado.toFixed(2)}`,
             latLongCliente: origem,
             latLongGuincho: destino,
-            status: 'Pendente'            
-        }
+            status: 'Pendente'
+        };
 
         try {
             const response = await fetch('http://192.168.15.13:3000/preSolicitacao', {
@@ -140,156 +147,193 @@ const GuinchosScreen: React.FC = () => {
                 },
                 body: JSON.stringify(bodyData),
             });
-            //const data = await response.json();
 
             if (response.ok) {
-                Alert.alert('solicitacao bem-sucedido!');
+                Alert.alert('Solicitação bem-sucedida!');
             } else {
-                //Alert.alert('Erro ao cadastrar', data.message || 'Verifique os dados e tente novamente.');
                 console.error(JSON.stringify(bodyData));
             }
         } catch (error) {
             Alert.alert('Erro de rede', 'Não foi possível conectar ao servidor.');
         }
-    }
+    };
 
     const renderCard = ({ item }: { item: any }) => {
         const data = distanceData[item.id];
+        const distanceValue = distanceData[item.id]?.totalDistance?.split(' ')[0];
+        const Tempo = distanceData[item.id]?.totalDuration;
+        const precoCalculado = 150 + (distanceValue ? parseFloat(distanceValue) * 10 : 0);
+    
         return (
             <View style={styles.card}>
-                <Text style={styles.cardText}>Nome: {item.nome}</Text>
-                <Text style={styles.cardText}>Telefone: {item.telefone}</Text>
-                <Text style={styles.cardText}>Modelo: {item.modelo}</Text>
-                <Text style={styles.cardText}>Distância: {data?.distance || 'Calculando...'}</Text>
-                <Text style={styles.cardText}>Tempo: {data?.duration || 'Calculando...'}</Text>
-                <Text style={styles.cardText}>Preço: {`R$ ${(150 + 1.6 *  parseFloat(distanceData[item.id]?.distance.split(' ')[0])).toFixed(2)}` || 'Calculando...'}</Text>
+                <Text style={styles.cardTitle}>{item.nome}</Text>
+    
+                <View style={styles.cardRow}>
+                    <View style={styles.cardItem}>
+                        <Icon name="call" size={20} color="#007BFF" />
+                        <Text style={styles.cardText}>{item.telefone}</Text>
+                    </View>
+                    <View style={styles.cardItem}>
+                        <Icon name="car" size={20} color="#007BFF" />
+                        <Text style={styles.cardText}>{item.modelo}</Text>
+                    </View>
+                </View>
+    
+                <View style={styles.cardRow}>
+                    <View style={styles.cardItem}>
+                        <Icon name="location-outline" size={20} color="#007BFF" />
+                        <Text style={styles.cardText}>{distanceValue ? `${distanceValue} km` : 'Calculando...'}</Text>
+                    </View>
+                    <View style={styles.cardItem}>
+                        <Icon name="time-outline" size={20} color="#007BFF" />
+                        <Text style={styles.cardText}>{Tempo || 'Calculando...'}</Text>
+                    </View>
+                </View>
+    
+                <View style={styles.priceContainer}>
+                    <Icon name="cash-outline" size={20} color="#007BFF" />
+                    <Text style={styles.priceText}>{`R$ ${precoCalculado.toFixed(2)}`}</Text>
+                </View>
+    
                 {!isRequesting && (
                     <TouchableOpacity
                         style={styles.button}
-                        onPress={() => requestGuincho(item.id,data?.distance,data?.originAddress,data?.destinationAddress)}
+                        onPress={() => requestGuincho(item.id, distanceValue, data?.originAddress, data?.destinationAddress)}
                     >
                         <Text style={styles.buttonText}>Solicitar</Text>
                     </TouchableOpacity>
                 )}
-                    <TouchableOpacity
-                        style={styles.button}
-                        onPress={voltarHome}
-                    >
-                        <Text style={styles.buttonText}>Voltar</Text>
-                    </TouchableOpacity>
-            </View>            
+            </View>
         );
     };
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.header}>Guinchos Ativos</Text>
-            {loading ? (
-                <ActivityIndicator size="large" color="#0000ff" />
-            ) : (
-                <FlatList
-                  data={guinchos}
-                    renderItem={renderCard}
-                    keyExtractor={(item, index) => (item.id ? item.id.toString() : `guincho-${index}`)}
-                    contentContainerStyle={{ paddingBottom: 20 }}
-                />
-            )}
-            {isRequesting && selectedGuincho && (
-                <Modal
-                    transparent={true}
-                    visible={isRequesting}
-                    animationType="fade"
-                >
-                    <View style={styles.modalContainer}>
-                        <Text style={styles.modalText}>
-                            Aguardando o guincho aceitar...
-                        </Text>
-                    </View>
-                </Modal>
-            )}
-            {location && (
-                <View style={styles.locationContainer}>
-                    <Text style={styles.locationText}>
-                        Sua localização: {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
-                    </Text>
+        <LinearGradient
+            colors={['rgba(42, 109, 236, 1)', 'rgba(234, 229, 251, 1)', 'rgba(196, 238, 242, 1)']}
+            style={styles.container}
+        >
+            <SafeAreaView style={styles.container}>
+                <View style={styles.headerContainer}>
+                    <TouchableOpacity onPress={voltarHome} style={styles.backButton}>
+                        <Icon name="arrow-back" size={30} color="black" />
+                    </TouchableOpacity>
+                    <Text style={styles.header}>Guinchos Ativos</Text>
                 </View>
-            )}
-            {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
-        </View>
+
+                {loading ? (
+                    <ActivityIndicator size="large" color="#0000ff" />
+                ) : (
+                    <FlatList
+                        data={guinchos}
+                        renderItem={renderCard}
+                        keyExtractor={(item, index) => (item.id ? item.id.toString() : `guincho-${index}`)}
+                        contentContainerStyle={{ paddingBottom: 20 }}
+                    />
+                )}
+
+                {location && (
+                    <View style={styles.locationContainer}>
+                        <Text style={styles.locationText}>Sua localização: {enderecoatual}</Text>
+                    </View>
+                )}
+
+                {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
+            </SafeAreaView>
+        </LinearGradient>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
-        padding: 20,
+        padding: 16,
+    },
+    headerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
     },
     header: {
         fontSize: 24,
         fontWeight: 'bold',
+        flex: 1,
         textAlign: 'center',
-        marginBottom: 20,
+    },
+    backButton: {
+        position: 'absolute',
+        left: 0,  // Pode ajustar o valor aqui
+        top: 0,   // Para garantir que o botão fique visível
+        padding: 8,
+        zIndex: 999,  // Garante que o botão fique por cima de outros elementos
     },
     card: {
         backgroundColor: '#fff',
-        borderRadius: 10,
         padding: 15,
-        marginBottom: 15,
+        borderRadius: 8,
+        marginBottom: 10,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 3,
+        alignItems: 'center', // Centralizando os itens dentro do card
+    },
+    cardTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        textAlign: 'center', // Centralizando o nome
+        marginBottom: 10,
+    },
+    cardRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        width: '95%',
+        marginBottom: 10,
+    },
+    cardItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     cardText: {
+        marginLeft: 5,
         fontSize: 16,
-        marginBottom: 5,
+    },
+    priceContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 10,
+        justifyContent: 'center', // Centralizando o valor
+    },
+    priceText: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        textAlign: 'center', // Centralizando o preço
+        marginLeft: 5,
     },
     button: {
-        backgroundColor: '#007aff',
+        backgroundColor: '#007BFF',
         paddingVertical: 10,
-        borderRadius: 5,
+        paddingHorizontal: 20,
+        borderRadius: 8,
         marginTop: 10,
-        alignItems: 'center',
     },
     buttonText: {
         color: '#fff',
         fontSize: 16,
+        textAlign: 'center',
     },
     locationContainer: {
-        marginTop: 20,
-        backgroundColor: '#fff',
-        padding: 15,
-        borderRadius: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 3,
+        paddingTop: 16,
+        paddingBottom: 32,
+        alignItems: 'center',
     },
     locationText: {
         fontSize: 16,
-    },
-    modalContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
-    modalText: {
-        color: '#fff',
-        fontSize: 20,
-        textAlign: 'center',
-        backgroundColor: '#007aff',
-        padding: 15,
-        borderRadius: 10,
+        color: '#333',
     },
     error: {
         color: 'red',
-        fontSize: 16,
         textAlign: 'center',
-        marginTop: 10,
     },
 });
 

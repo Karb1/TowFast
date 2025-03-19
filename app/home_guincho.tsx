@@ -28,7 +28,7 @@ const SupportScreen: React.FC = () => {
     // Função para ativar o guincho e enviá-lo ao mapa
     const handleSetOnline = async () => {
         try {
-            const response = await axios.put('http://172.22.110.141:3000/updatestatus', {
+            const response = await axios.put('http://192.168.15.13:3000/updatestatus', {
                 id_cliente: userId,
                 status: 1,
                 ultimoStatus: currentTime,
