@@ -27,7 +27,7 @@ export default function LoginSteps() {
         if (step === 1) {
             if (email) {
                 try {
-                    const response = await axios.post('http://192.168.15.13:3000/user', {
+                    const response = await axios.post('http://172.20.10.10:3000/user', {
                         username: email
                     }, {
                         headers: {
@@ -59,7 +59,7 @@ export default function LoginSteps() {
         try {
             console.log('Tentando fazer login com:', { email, password });
     
-            const response = await axios.post('http://192.168.15.13:3000/login', {
+            const response = await axios.post('http://172.20.10.10:3000/login', {
                 email: email,
                 password: password
             }, {

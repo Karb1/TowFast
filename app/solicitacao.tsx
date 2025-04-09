@@ -30,12 +30,12 @@ const GuinchosScreen: React.FC = () => {
     const router = useRouter();
 
     const voltarHome = () => {
-        router.push(`/home_motorista`);
+        router.push(`/pesquisa`);
     };
 
     const fetchGuinchos = async () => {
         try {
-            const response = await axios.get('http://192.168.15.13:3000/guinchosativos');
+            const response = await axios.get('http://172.20.10.10:3000/guinchosativos');
             if (response.status === 200) {
                 setGuinchos(response.data);
             } else {
@@ -77,9 +77,15 @@ const GuinchosScreen: React.FC = () => {
                 params: {
                     origins: guincho.lat_long,
                     destinations: `${location.latitude},${location.longitude}|${LatPre},${LongPre}`,
-                    key: 'FXUKUSVIBO2kQDwmQiMGZrO4RDsimxj2dax53JHLpPQdJBEvOjyqW77kltQdMJT9',
+                    key: 'SM15AtMpPlg697PYcKTTiRq80UFjbb2it1lkVPb5tCbDxwd0FUv60Sz2kZ5iQf48',
                 },
             });
+
+            console.log('LatGuincho:',guincho.lat_long);
+            console.log('LatCarro:',location.latitude,location.longitude);
+            console.log('LatDestino:',LatPre,LongPre);
+
+            console.log('Response:',response.data);
 
             const rows = response.data.rows || [];
             let totalDistance = 0;
@@ -94,6 +100,25 @@ const GuinchosScreen: React.FC = () => {
                 });
             });
 
+            // Variáveis para armazenar os dois destinations
+            let firstDestination = '';
+            let secondDestination = '';
+
+            rows.forEach((row: any) => {
+                row.elements.forEach((element: any, index: number) => {
+                    if (element.status === 'OK') {
+                        // Pega o destination do primeiro elemento
+                        if (index === 0) {
+                            firstDestination = element.destination;
+                        }
+                        // Pega o destination do segundo elemento
+                        if (index === 1) {
+                            secondDestination = element.destination;
+                        }
+                    }
+                });
+            });
+
             const totalDistanceKm = (totalDistance / 1000).toFixed(2);
             const totalDurationMin = Math.round(totalDuration / 60);
 
@@ -104,6 +129,9 @@ const GuinchosScreen: React.FC = () => {
                     totalDuration: `${totalDurationMin} mins`,
                     originAddress: response.data.origin_addresses?.[0] || 'Origem desconhecida',
                     destinationAddresses: response.data.destination_addresses || ['Destino desconhecido'],
+                    guinchoAddress: guincho.lat_long,
+                    destination1: `${location.latitude},${location.longitude}`,
+                    destination2: `${LatPre},${LongPre}`,
                 },
             }));
         } catch (error) {
@@ -125,7 +153,7 @@ const GuinchosScreen: React.FC = () => {
     }, [location, guinchos]);
 
     const requestGuincho = async (...params: any[]) => {
-        const [idGuincho, distanceValue, origem, destino] = params;
+        const [idGuincho, distanceValue, endguincho, Dest1, Dest2] = params;
 
         const precoCalculado = 150 + (distanceValue ? parseFloat(distanceValue) * 10 : 0);
 
@@ -134,13 +162,14 @@ const GuinchosScreen: React.FC = () => {
             id_Guincho: idGuincho,
             distancia: distanceValue,
             preco: `R$ ${precoCalculado.toFixed(2)}`,
-            latLongCliente: origem,
-            latLongGuincho: destino,
-            status: 'Pendente'
+            latLongCliente: Dest1,
+            latLongGuincho: endguincho,
+            status: 'Pendente',
+            destino: Dest2,
         };
 
         try {
-            const response = await fetch('http://192.168.15.13:3000/preSolicitacao', {
+            const response = await fetch('http://172.20.10.10:3000/preSolicitacao', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -150,6 +179,7 @@ const GuinchosScreen: React.FC = () => {
 
             if (response.ok) {
                 Alert.alert('Solicitação bem-sucedida!');
+                console.log(JSON.stringify(bodyData));
             } else {
                 console.error(JSON.stringify(bodyData));
             }
@@ -198,7 +228,7 @@ const GuinchosScreen: React.FC = () => {
                 {!isRequesting && (
                     <TouchableOpacity
                         style={styles.button}
-                        onPress={() => requestGuincho(item.id, distanceValue, data?.originAddress, data?.destinationAddress)}
+                        onPress={() => requestGuincho(item.id, distanceValue, data?.guinchoAddress,data?.destination1,data?.destination2)}
                     >
                         <Text style={styles.buttonText}>Solicitar</Text>
                     </TouchableOpacity>

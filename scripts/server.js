@@ -228,7 +228,8 @@ app.post('/preSolicitacao', async (req, res) => {
         preco, 
         latLongCliente, 
         latLongGuincho, 
-        status 
+        status,
+        destino
     } = req.body;
 
     // Validação dos campos obrigatórios
@@ -244,7 +245,8 @@ app.post('/preSolicitacao', async (req, res) => {
         preco: preco,
         latLongCliente: latLongCliente,
         latLongGuincho: latLongGuincho,
-        status: status
+        status: status,
+        destino: destino,
     };
 
     // Log do JSON que será enviado para a API externa
@@ -264,6 +266,24 @@ app.post('/preSolicitacao', async (req, res) => {
         console.error('Erro ao conectar com a API:', error);
         res.status(500).json({ message: 'Erro ao conectar com o servidor.', error: error.message });
     }
+
+    app.get('/GuinchopreSolicitacao', async (req, res) => {
+        try {
+            // Faz a chamada para a API externa
+            const { status, data } = await callApi('GetGuinchosAtivos', 'GET');
+    
+            if (status >= 400) {
+                return res.status(status).json({ message: 'Erro ao buscar guinchos ativos.', error: data });
+            }
+    
+            // Retorna a lista de guinchos ativos para o cliente
+            res.status(200).json(data);
+        } catch (error) {
+            console.error('Erro ao conectar com a API:', error);
+            res.status(500).json({ message: 'Erro ao conectar com o servidor.', error: error.message });
+        }
+    });
+    
 });
 
 // Inicia o servidor Node.js
