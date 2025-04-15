@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     View,
     Text,
@@ -16,6 +17,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { API_BASE_URL } from '../constants/ApiConfig'; // Importando AxiosError
 
 export default function LoginSteps() {
     const [step, setStep] = useState(1);
@@ -27,7 +29,7 @@ export default function LoginSteps() {
         if (step === 1) {
             if (email) {
                 try {
-                    const response = await axios.post('http://172.20.10.10:3000/user', {
+                    const response = await axios.post(`${API_BASE_URL}/user`, {
                         username: email
                     }, {
                         headers: {
@@ -58,39 +60,75 @@ export default function LoginSteps() {
     const handleLogin = async () => {
         try {
             console.log('Tentando fazer login com:', { email, password });
-    
-            const response = await axios.post('http://172.20.10.10:3000/login', {
+
+            const response = await axios.post(`${API_BASE_URL}/login`, {
                 email: email,
                 password: password
             }, {
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                validateStatus: function (status) {
+                    return status >= 200 && status < 300;
                 }
             });
-    
-            if (response.status === 200) {
-                const { id, tipo, id_Endereco } = response.data; // Extraindo o ID e tipo da resposta
-    
-                // Navega para a tela apropriada com base no tipo
-                if (tipo === 'Motorista') {
-                    router.push(`/home_motorista?userId=${id}&idEndereco=${id_Endereco}`); // Passa o ID e id_Endereco como parâmetros na URL
-                } else if (tipo === 'Guincho') {
-                    router.push(`/home_guincho?userId=${id}&idEndereco=${id_Endereco}`); // Passa o ID e id_Endereco como parâmetros na URL
-                } else {
-                    Alert.alert('Tipo de usuário desconhecido.');
+
+            // Verificar o tipo de conteúdo da resposta
+            const contentType = response.headers['content-type'];
+            if (!contentType || !contentType.includes('application/json')) {
+                console.error('Erro: Resposta não é do tipo JSON:', contentType);
+                Alert.alert('Erro', 'Formato de resposta inválido do servidor');
+                return;
+            }
+
+            // Validar se response.data existe e é um objeto
+            if (!response.data || typeof response.data !== 'object') {
+                console.error('Erro: Dados da resposta inválidos:', response.data);
+                Alert.alert('Erro', 'Dados de resposta inválidos do servidor');
+                return;
+            }
+
+            if (response.status === 200 && response.data) {
+                try {
+                    const { id, tipo, id_Endereco } = response.data;
+                    
+                    if (!id || !tipo || !id_Endereco) {
+                        throw new Error('Dados de resposta incompletos');
+                    }
+
+                    // Salvar dados do usuário no AsyncStorage
+                    await AsyncStorage.setItem('@user_data', JSON.stringify({
+                        id,
+                        tipo,
+                        id_Endereco,
+                        email
+                    }));
+
+                    if (tipo === 'Motorista') {
+                        router.push(`/home_motorista?userId=${id}&idEndereco=${id_Endereco}`);
+                    } else if (tipo === 'Guincho') {
+                        router.push(`/home_guincho?userId=${id}&idEndereco=${id_Endereco}`);
+                    } else {
+                        Alert.alert('Tipo de usuário desconhecido.');
+                    }
+                } catch (parseError) {
+                    console.error('Erro ao processar dados da resposta:', parseError);
+                    Alert.alert('Erro ao processar dados do usuário. Tente novamente.');
                 }
             }
         } catch (error) {
             if (axios.isAxiosError(error)) {
                 if (error.response) {
-                    console.error('Erro ao tentar fazer login: Senha incorreta');
-                    Alert.alert(`Erro ao tentar fazer login: ${error.response.data.message}`);
+                    console.error('Erro ao tentar fazer login:', error.response.data);
+                    Alert.alert('Erro ao tentar fazer login: ' + (error.response.data.message || 'Erro desconhecido'));
                 } else {
-                    console.error('Erro ao conectar com o servidor:');
+                    console.error('Erro ao conectar com o servidor:', error);
                     Alert.alert('Erro ao conectar com o servidor. Verifique se a API está em execução.');
                 }
             } else {
-                Alert.alert('Erro desconhecido.');
+                console.error('Erro desconhecido:', error);
+                Alert.alert('Erro desconhecido. Tente novamente.');
             }
         }
     };

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     View,
     Text,
@@ -9,17 +10,80 @@ import {
     ScrollView,
     KeyboardAvoidingView,
     Platform,
+    Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import Icon from 'react-native-vector-icons/Ionicons';
-import axios, { AxiosError } from 'axios'; // Importando AxiosError
+import axios, { AxiosError } from 'axios';
+import { API_BASE_URL } from '../constants/ApiConfig'; // Importando AxiosError
 import * as Location from 'expo-location'; // Importando expo-location
 
 const SupportScreen: React.FC = () => {
     const router = useRouter();
     const { userId, idEndereco } = useLocalSearchParams();
     const currentTime = new Date().toISOString();
+    // Salvar informações no AsyncStorage
+    useEffect(() => {
+        const saveUserData = async () => {
+            try {
+                if (userId) await AsyncStorage.setItem('@user_id', userId.toString());
+                if (idEndereco) await AsyncStorage.setItem('@endereco_id', idEndereco.toString());
+            } catch (error) {
+                console.error('Erro ao salvar dados no AsyncStorage:', error);
+            }
+        };
+        saveUserData();
+    }, [userId, idEndereco]);
+
+    // Função para verificar novas solicitações
+    const checkNewRequests = async () => {
+        try {
+            // Validação do userId
+            if (!userId) {
+                console.error('Erro: ID do guincho não fornecido');
+                return;
+            }
+
+            console.log('Verificando solicitações para o guincho ID:', userId);
+
+            const response = await fetch(`${API_BASE_URL}/popupsolicitacao?id_guincho=${userId}`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Erro na requisição: ${response.status}`);
+            }
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Resposta do servidor não está em formato JSON');
+            }
+
+            const data = await response.json();
+            console.log('Resposta da API:', data);
+            
+            if (data && data.length > 0) {
+                console.log('Solicitações encontradas, redirecionando para popup...');
+                router.push(`/popup?userId=${userId}`);
+            }
+        } catch (error) {
+            console.error('Erro ao verificar solicitações:', error);
+            if (error instanceof Error) {
+                console.error('Detalhes do erro:', error.message);
+            }
+        }
+    };
+
+    // Polling para verificar novas solicitações
+    useEffect(() => {
+        const pollInterval = setInterval(checkNewRequests, 5000); // Verifica a cada 5 segundos
+
+        return () => clearInterval(pollInterval); // Limpa o intervalo quando o componente é desmontado
+    }, []);
 
     const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
     const [errorMsg, setErrorMsg] = useState<string>('');
@@ -28,7 +92,7 @@ const SupportScreen: React.FC = () => {
     // Função para ativar o guincho e enviá-lo ao mapa
     const handleSetOnline = async () => {
         try {
-            const response = await axios.put('http://172.20.10.10:3000/updatestatus', {
+            const response = await axios.put(`${API_BASE_URL}/updatestatus`, {
                 id_cliente: userId,
                 status: 1,
                 ultimoStatus: currentTime,
@@ -65,7 +129,7 @@ const SupportScreen: React.FC = () => {
         const latLongString = `${latitude},${longitude}`;
     
         try {
-            const response = await axios.put('http://172.20.10.10:3000/updatelocal', {
+            const response = await axios.put(`${API_BASE_URL}/updatelocal`, {
                 id_Endereco: idEndereco,
                 local_real_time: 'Atual', // Envia "Atual" como valor de local_real_time
                 lat_long: latLongString, // Envia a localização como string
@@ -157,7 +221,7 @@ const SupportScreen: React.FC = () => {
                             <Text style={styles.boxText}>{'Ficar Online'}</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.box}>
+                        <TouchableOpacity style={styles.box} onPress={() => router.push(`/info?userType=Guincho`)}>
                             <Icon name="book" size={50} color="#025159" />
                             <Text style={styles.boxText}>Política e Tutorial</Text>
                         </TouchableOpacity>

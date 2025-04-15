@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Alert, KeyboardAvoidingView, ScrollView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import InputField from '@/InputField';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../constants/ApiConfig'; // Importando AxiosError
 
 export default function Cadastro() {
     const [username, setUsername] = useState<string>('');
@@ -36,7 +38,7 @@ export default function Cadastro() {
         };
 
         try {
-            const response = await fetch('http://192.168.15.13:3000/register', {
+            const response = await fetch(`${API_BASE_URL}/register`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -4,7 +4,7 @@ const cors = require('cors');
 const https = require('https');
 
 const app = express();
-const PORT = 3000;
+const PORT = 3003;
 
 app.use(express.json());
 app.use(cors());
@@ -219,6 +219,28 @@ app.get('/guinchosativos', async (req, res) => {
     }
 });
 
+// Endpoint: Obter dados da solicitação para o popup
+app.get('/popupsolicitacao', async (req, res) => {
+    const { id_guincho } = req.query;
+
+    if (!id_guincho) {
+        return res.status(400).json({ message: 'O ID do guincho é obrigatório.' });
+    }
+
+    try {
+        const { status, data } = await callApi(`GetPopUpSolicitacao?id_guincho=${id_guincho}`, 'GET');
+
+        if (status >= 400) {
+            return res.status(status).json({ message: 'Erro ao buscar dados da solicitação.', error: data });
+        }
+
+        res.status(200).json(data);
+    } catch (error) {
+        console.error('Erro ao conectar com a API:', error);
+        res.status(500).json({ message: 'Erro ao conectar com o servidor.', error: error.message });
+    }
+});
+
 // Endpoint: Registrar pré-solicitação
 app.post('/preSolicitacao', async (req, res) => {
     const { 
@@ -266,24 +288,67 @@ app.post('/preSolicitacao', async (req, res) => {
         console.error('Erro ao conectar com a API:', error);
         res.status(500).json({ message: 'Erro ao conectar com o servidor.', error: error.message });
     }
+});
 
-    app.get('/GuinchopreSolicitacao', async (req, res) => {
-        try {
-            // Faz a chamada para a API externa
-            const { status, data } = await callApi('GetGuinchosAtivos', 'GET');
-    
-            if (status >= 400) {
-                return res.status(status).json({ message: 'Erro ao buscar guinchos ativos.', error: data });
-            }
-    
-            // Retorna a lista de guinchos ativos para o cliente
-            res.status(200).json(data);
-        } catch (error) {
-            console.error('Erro ao conectar com a API:', error);
-            res.status(500).json({ message: 'Erro ao conectar com o servidor.', error: error.message });
+// Endpoint: Atualizar status da pré-solicitação
+app.put('/updatePreSolicitacao', async (req, res) => {
+    const { id_Solicitacao, status } = req.body;
+
+    if (!id_Solicitacao || status === undefined) {
+        return res.status(400).json({ message: 'Os campos id_Solicitacao e status são obrigatórios.' });
+    }
+
+    try {
+        const { status: responseStatus, data } = await callApi('AtualizaStatusPreSolicitacao', 'PUT', { id_Solicitacao, status });
+
+        if (responseStatus >= 400) {
+            return res.status(responseStatus).json({ message: 'Erro ao atualizar o status da pré-solicitação.', error: data });
         }
-    });
-    
+
+        res.status(200).json({ message: 'Status da pré-solicitação atualizado com sucesso.' });
+    } catch (error) {
+        console.error('Erro ao conectar com a API:', error);
+        res.status(500).json({ message: 'Erro ao conectar com o servidor.', error: error.message });
+    }
+});
+
+// Endpoint: Buscar pré-solicitação por ID
+app.post('/solicitacao', async (req, res) => {
+    const { id_Solicitacao } = req.body;
+
+    if (!id_Solicitacao) {
+        return res.status(400).json({ message: 'O ID da solicitação é obrigatório.' });
+    }
+
+    try {
+        const { status, data } = await callApi('GetSolicitacaoById', 'POST', { id_Solicitacao });
+
+        if (status >= 400) {
+            return res.status(status).json({ message: 'Erro ao buscar a solicitação.', error: data });
+        }
+
+        res.status(200).json(data);
+    } catch (error) {
+        console.error('Erro ao conectar com a API:', error);
+        res.status(500).json({ message: 'Erro ao conectar com o servidor.', error: error.message });
+    }
+});
+
+app.get('/GuinchopreSolicitacao', async (req, res) => {
+    try {
+        // Faz a chamada para a API externa
+        const { status, data } = await callApi('GetGuinchosAtivos', 'GET');
+
+        if (status >= 400) {
+            return res.status(status).json({ message: 'Erro ao buscar guinchos ativos.', error: data });
+        }
+
+        // Retorna a lista de guinchos ativos para o cliente
+        res.status(200).json(data);
+    } catch (error) {
+        console.error('Erro ao conectar com a API:', error);
+        res.status(500).json({ message: 'Erro ao conectar com o servidor.', error: error.message });
+    }
 });
 
 // Inicia o servidor Node.js

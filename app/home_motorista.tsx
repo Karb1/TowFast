@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -7,16 +7,58 @@ import {
     Image,
     ScrollView,
     KeyboardAvoidingView,
-    Platform
+    Platform,
+    Alert
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import Icon from 'react-native-vector-icons/Ionicons'; // Importação de ícones
+import Icon from 'react-native-vector-icons/Ionicons';
 import { useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const MainScreen: React.FC = () => {
     const router = useRouter();
-    const { userId, idEndereco } = useLocalSearchParams();
+    const params = useLocalSearchParams();
+
+    const [userData, setUserData] = useState({
+        userId: '',
+        idEndereco: '',
+        tipo: '',
+        email: ''
+    });
+
+    useEffect(() => {
+        const loadUserData = async () => {
+            try {
+                const storedData = await AsyncStorage.getItem('@user_data');
+                if (storedData) {
+                    const parsedData = JSON.parse(storedData);
+                    setUserData({
+                        userId: parsedData.id,
+                        idEndereco: parsedData.id_Endereco,
+                        tipo: parsedData.tipo,
+                        email: parsedData.email
+                    });
+                } else if (params.userId && params.idEndereco) {
+                    setUserData({
+                        userId: params.userId as string,
+                        idEndereco: params.idEndereco as string,
+                        tipo: 'Motorista',
+                        email: ''
+                    });
+                } else {
+                    Alert.alert('Erro', 'Dados do usuário não encontrados');
+                    router.push('/home');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar dados do usuário:', error);
+                Alert.alert('Erro', 'Falha ao carregar dados do usuário');
+                router.push('/home');
+            }
+        };
+
+        loadUserData();
+    }, []);
     const handleLinkPressHelpDesk = () => {
         router.push('/home_guincho');
     };
@@ -30,7 +72,7 @@ const MainScreen: React.FC = () => {
     };
 
     const handleLinkPressHelp = () => {
-        router.push(`/pesquisa?IdMotorista=${userId}`);
+        router.push(`/pesquisa?IdMotorista=${userData.userId}`);
     };
 
     return (
@@ -55,7 +97,7 @@ const MainScreen: React.FC = () => {
                             <Text style={styles.boxText}>Localizar</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.box}>
+                        <TouchableOpacity style={styles.box} onPress={() => router.push('/info?userType=Motorista')}>
                             <Icon name="book" size={50} color="#025159" />
                             <Text style={styles.boxText}>Política e Tutorial</Text>
                         </TouchableOpacity>
@@ -79,6 +121,7 @@ const MainScreen: React.FC = () => {
                         <Text style={styles.logoutText}>Sair</Text>
                     </TouchableOpacity>
                 </LinearGradient>
+
             </ScrollView>
         </KeyboardAvoidingView>
     );

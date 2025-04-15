@@ -41,9 +41,11 @@ export default function RootLayout() {
         <Stack.Screen name="document_motorista" />
         <Stack.Screen name="home_guincho" />
         <Stack.Screen name="home_motorista" />
+        <Stack.Screen name="popup" />
         <Stack.Screen name="home" />
         <Stack.Screen name="Msolicitacao" />
         <Stack.Screen name="pesquisa" />
+        <Stack.Screen name="route.tsx" />
       </Stack>
     </ThemeProvider>
   );

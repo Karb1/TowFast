@@ -11,12 +11,15 @@ import {
     SafeAreaView,
     Platform,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios, { AxiosError } from 'axios';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { useLocalSearchParams } from 'expo-router';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { API_BASE_URL } from '../constants/ApiConfig';
+
 
 const GuinchosScreen: React.FC = () => {
     const [guinchos, setGuinchos] = useState<any[]>([]);
@@ -26,16 +29,49 @@ const GuinchosScreen: React.FC = () => {
     const [distanceData, setDistanceData] = useState<{ [key: string]: any }>({});
     const [selectedGuincho, setSelectedGuincho] = useState<any | null>(null);
     const [isRequesting, setIsRequesting] = useState(false);
-    const { IdMotorista, LatPre, LongPre, enderecoatual } = useLocalSearchParams();
+    const [userData, setUserData] = useState({
+        userId: '',
+        idEndereco: '',
+        tipo: '',
+        email: ''
+    });
+
+    const { LatPre, LongPre, enderecoatual } = useLocalSearchParams();
     const router = useRouter();
 
+    useEffect(() => {
+        const loadUserData = async () => {
+            try {
+                const storedData = await AsyncStorage.getItem('@user_data');
+                if (storedData) {
+                    const parsedData = JSON.parse(storedData);
+                    setUserData({
+                        userId: parsedData.id,
+                        idEndereco: parsedData.id_Endereco,
+                        tipo: parsedData.tipo,
+                        email: parsedData.email
+                    });
+                } else {
+                    Alert.alert('Erro', 'Dados do usuário não encontrados');
+                    router.push('/home');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar dados do usuário:', error);
+                Alert.alert('Erro', 'Falha ao carregar dados do usuário');
+                router.push('/home');
+            }
+        };
+
+        loadUserData();
+    }, []);
+
     const voltarHome = () => {
-        router.push(`/pesquisa`);
+        router.push(`/home_motorista`);
     };
 
     const fetchGuinchos = async () => {
         try {
-            const response = await axios.get('http://172.20.10.10:3000/guinchosativos');
+            const response = await axios.get(`${API_BASE_URL}/guinchosativos`);
             if (response.status === 200) {
                 setGuinchos(response.data);
             } else {
@@ -158,7 +194,7 @@ const GuinchosScreen: React.FC = () => {
         const precoCalculado = 150 + (distanceValue ? parseFloat(distanceValue) * 10 : 0);
 
         const bodyData = {
-            id_Motorista: IdMotorista,
+            id_Motorista: userData.userId,
             id_Guincho: idGuincho,
             distancia: distanceValue,
             preco: `R$ ${precoCalculado.toFixed(2)}`,
@@ -169,7 +205,7 @@ const GuinchosScreen: React.FC = () => {
         };
 
         try {
-            const response = await fetch('http://172.20.10.10:3000/preSolicitacao', {
+            const response = await fetch(`${API_BASE_URL}/preSolicitacao`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

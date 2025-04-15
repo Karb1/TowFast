@@ -8,52 +8,100 @@ import {
     ActivityIndicator,
     Alert
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { API_BASE_URL } from '../constants/ApiConfig';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface ApiData {
-    id: string;
-    title: string;
-    message: string;
-    // Adicione mais campos conforme necessário
+    id_Solicitacao: string;
+    nome_Motorista: string;
+    distancia: string;
+    preco: number;
+    destino: string;
+    idEndereco: string;
+    latLongCliente: string;
 }
 
 export default function PopupScreen() {
     const [isVisible, setIsVisible] = useState(true);
     const [loading, setLoading] = useState(true);
-    const [apiData, setApiData] = useState<ApiData | null>(null);
+    const [apiData, setApiData] = useState<ApiData[]>([]);
+    const [currentIndex, setCurrentIndex] = useState(0);
     const router = useRouter();
+    const { userId } = useLocalSearchParams();
 
     useEffect(() => {
+        // Log do userId para validação
+        console.log('userId recebido:', userId);
+        
+        // Validação do userId
+        if (!userId) {
+            Alert.alert('Erro', 'ID do guincho não fornecido');
+            setIsVisible(false);
+            router.back();
+            return;
+        }
+
         fetchDataFromApi();
     }, []);
 
     const fetchDataFromApi = async () => {
         try {
-            const response = await fetch('http://192.168.15.13:3000/api/data');
+            const response = await fetch(`${API_BASE_URL}/popupsolicitacao?id_guincho=${userId}`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Resposta do servidor não está em formato JSON');
+            }
+
             const data = await response.json();
+            if (!data || data.length === 0) {
+                Alert.alert('Aviso', 'Não há solicitações disponíveis no momento.');
+                setIsVisible(false);
+                router.back();
+                return;
+            }
             setApiData(data);
             setLoading(false);
         } catch (error) {
             console.error('Erro ao buscar dados:', error);
-            Alert.alert('Erro', 'Não foi possível carregar os dados.');
+            let errorMessage = 'Não foi possível carregar os dados. ';
+            if (error instanceof Error) {
+                errorMessage += error.message;
+            }
+            Alert.alert('Erro', errorMessage);
             setLoading(false);
+            setIsVisible(false);
+            router.back();
         }
     };
 
     const handleConfirm = async () => {
         try {
-            const response = await fetch('http://192.168.15.13:3000/api/confirm', {
-                method: 'POST',
+            const response = await fetch(`${API_BASE_URL}/updatePreSolicitacao`, {
+                method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ id: apiData?.id }),
+                body: JSON.stringify({
+                    id_Solicitacao: apiData[currentIndex]?.id_Solicitacao,
+                    status: 'Aceite'
+                }),
             });
 
             if (response.ok) {
                 Alert.alert('Sucesso', 'Confirmação realizada com sucesso!');
+                router.push(`/route?solicitacaoId=${apiData[currentIndex]?.id_Solicitacao}&userId=${userId}&idEndereco=${apiData[currentIndex]?.idEndereco}&nomeMotorista=${encodeURIComponent(apiData[currentIndex]?.nome_Motorista)}&destino=${encodeURIComponent(apiData[currentIndex]?.destino)}&distancia=${encodeURIComponent(apiData[currentIndex]?.distancia)}&preco=${apiData[currentIndex]?.preco}&latLongCliente=${encodeURIComponent(apiData[currentIndex]?.latLongCliente)}`);
                 setIsVisible(false);
-                router.back();
             } else {
                 Alert.alert('Erro', 'Não foi possível confirmar.');
             }
@@ -64,19 +112,28 @@ export default function PopupScreen() {
 
     const handleReject = async () => {
         try {
-            const response = await fetch('http://192.168.15.13:3000/api/reject', {
-                method: 'POST',
+            console.log('ID sendo enviado:', apiData[currentIndex]?.id_Solicitacao);
+            const response = await fetch(`${API_BASE_URL}/updatePreSolicitacao`, {
+                method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ id: apiData?.id }),
+                body: JSON.stringify({
+                    id_Solicitacao: apiData[currentIndex]?.id_Solicitacao,
+                    status: 'Recusado'
+                }),
             });
 
             if (response.ok) {
                 Alert.alert('Sucesso', 'Rejeição realizada com sucesso!');
-                setIsVisible(false);
-                router.back();
+                if (currentIndex < apiData.length - 1) {
+                    setCurrentIndex(currentIndex + 1);
+                } else {
+                    setIsVisible(false);
+                    router.back();
+                }
             } else {
+                console.log(response)
                 Alert.alert('Erro', 'Não foi possível rejeitar.');
             }
         } catch (error) {
@@ -100,8 +157,11 @@ export default function PopupScreen() {
                         <ActivityIndicator size="large" color="#025159" />
                     ) : (
                         <>
-                            <Text style={styles.modalTitle}>{apiData?.title}</Text>
-                            <Text style={styles.modalText}>{apiData?.message}</Text>
+                            <Text style={styles.modalTitle}>Nova Solicitação de Guincho</Text>
+                            <Text style={styles.modalText}>Motorista: {apiData[currentIndex]?.nome_Motorista}</Text>
+                            <Text style={styles.modalText}>Distância: {apiData[currentIndex]?.distancia}</Text>
+                            <Text style={styles.modalText}>Preço: R$ {apiData[currentIndex]?.preco}</Text>
+                            <Text style={styles.modalText}>Destino: {apiData[currentIndex]?.destino}</Text>
                             
                             <View style={styles.buttonContainer}>
                                 <TouchableOpacity
