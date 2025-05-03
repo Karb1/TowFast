@@ -1,2 +1,2 @@
 // Configuração global da API
-export const API_BASE_URL = 'http://172.22.109.144:3003';
+export const API_BASE_URL = 'http://192.168.15.13:3003';

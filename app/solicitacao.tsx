@@ -214,10 +214,13 @@ const GuinchosScreen: React.FC = () => {
             });
 
             if (response.ok) {
-                Alert.alert('Solicitação bem-sucedida!');
-                console.log(JSON.stringify(bodyData));
+                const data = await response.json();
+                console.log('Resposta da solicitação:', data);
+                Alert.alert('Solicitação enviada!', 'Aguardando resposta do guincho...');
+                router.push(`/acompanhamento?id_solicitacao=${data}`);
             } else {
                 console.error(JSON.stringify(bodyData));
+                Alert.alert('Erro', 'Não foi possível processar sua solicitação.');
             }
         } catch (error) {
             Alert.alert('Erro de rede', 'Não foi possível conectar ao servidor.');

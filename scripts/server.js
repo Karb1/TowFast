@@ -279,7 +279,7 @@ app.post('/preSolicitacao', async (req, res) => {
 
         // Verifica se a resposta da API C# foi bem-sucedida
         if (status === 200) {
-            res.status(200).json({ message: 'Pré-solicitação registrada com sucesso.' });
+            res.status(200).json(data);
         } else {
             // Caso a API C# retorne um erro, passa a mensagem para o cliente
             res.status(status).json({ message: 'Erro ao registrar a pré-solicitação.', error: data });
