@@ -146,10 +146,6 @@ export default function PopupScreen() {
             animationType="slide"
             transparent={true}
             visible={isVisible}
-            onRequestClose={() => {
-                setIsVisible(false);
-                router.back();
-            }}
         >
             <View style={styles.centeredView}>
                 <View style={styles.modalView}>

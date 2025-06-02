@@ -60,11 +60,11 @@ const MainScreen: React.FC = () => {
         loadUserData();
     }, []);
     const handleLinkPressHelpDesk = () => {
-        router.push('/home_guincho');
+        router.push(`/MotoristaFinalizadasScreen?IdMotorista=${userData.userId}`);
     };
 
     const handleLinkPressInfo = () => {
-        router.push('/document_motorista');
+        router.push(`/Info_motorista?IdMotorista=${userData.userId}`);
     };
 
     const handleLinkReturn = () => {
@@ -97,21 +97,21 @@ const MainScreen: React.FC = () => {
                             <Text style={styles.boxText}>Localizar</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.box} onPress={() => router.push('/info?userType=Motorista')}>
+                        <TouchableOpacity style={styles.box} onPress={() => router.push('/document_motorista')}>
                             <Icon name="book" size={50} color="#025159" />
-                            <Text style={styles.boxText}>Política e Tutorial</Text>
+                            <Text style={styles.boxText}>Tutorial</Text>
                         </TouchableOpacity>
                     </View>
 
                     {/* Linha 2 */}
                     <View style={styles.row}>
                         <TouchableOpacity style={styles.box} onPress={handleLinkPressHelpDesk}>
-                            <Icon name="headset" size={50} color="#025159" />
-                            <Text style={styles.boxText}>HelpDesk</Text>
+                            <Icon name="list-outline" size={50} color="#025159" />
+                            <Text style={styles.boxText}>Historico</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.box} onPress={handleLinkPressInfo}>
-                            <Icon name="information-circle" size={50} color="#025159" />
+                            <Icon name="person-outline" size={50} color="#025159" />
                             <Text style={styles.boxText}>Informações</Text>
                         </TouchableOpacity>
                     </View>

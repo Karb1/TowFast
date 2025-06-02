@@ -49,11 +49,8 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
                             }}
                             title="Guincho"
                             description="Localização atual do guincho"
-                        >
-                            <View style={styles.markerGuincho}>
-                                <Ionicons name="car" size={24} color="#025159" />
-                            </View>
-                        </Marker>
+                            pinColor="#025159"
+                        />
                     )}
                     {clienteLocation && (
                         <Marker

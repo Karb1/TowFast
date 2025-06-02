@@ -216,7 +216,7 @@ const GuinchosScreen: React.FC = () => {
             if (response.ok) {
                 const data = await response.json();
                 console.log('Resposta da solicitação:', data);
-                Alert.alert('Solicitação enviada!', 'Aguardando resposta do guincho...');
+                //Alert.alert('Solicitação enviada!', 'Aguardando resposta do guincho...');
                 router.push(`/acompanhamento?id_solicitacao=${data}`);
             } else {
                 console.error(JSON.stringify(bodyData));

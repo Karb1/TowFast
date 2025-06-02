@@ -1,106 +1,108 @@
 import React from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    Image,
-    TouchableOpacity,
-    ScrollView,
-    KeyboardAvoidingView,
-    Platform
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 
-export default function SupportScreen() {
-    const router = useRouter();
+export default function GuinchoTutorialScreen() {
+  const router = useRouter();
 
-    // Função para retornar à tela anterior
-    const handleBackPress = () => {
-        router.back(); // Retorna para a tela anterior
-    };
+  const handleBackPress = () => {
+    router.back();
+  };
 
-    return (
-        <KeyboardAvoidingView
-            style={{ flex: 1 }}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+  return (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+        <LinearGradient
+          colors={['rgba(196, 238, 242, 1)', 'rgba(235, 216, 134, 1)', 'rgba(235, 201, 77, 1)']}
+          style={styles.container}
         >
-            <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-                <LinearGradient
-                    colors={['rgba(196, 238, 242, 1)', 'rgba(235, 216, 134, 1)', 'rgba(235, 201, 77, 1)']}
-                    style={styles.container}
-                >
-                    {/* Botão de voltar */}
-                    <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
-                        <Text style={styles.backButtonText}>←</Text>
-                    </TouchableOpacity>
+          {/* Botão de voltar */}
+          <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
+            <Text style={styles.backButtonText}>←</Text>
+          </TouchableOpacity>
 
-                    {/* Logo da aplicação */}
-                    <Image
-                        source={require('@/assets/images/logo.png')} // Adapta com seu logo
-                        style={styles.logo}
-                        resizeMode="contain"
-                    />
-
-                    {/* Título e Conteúdo */}
-                    <View style={styles.content}>
-                        <Text style={styles.title}>Como Solicitar um Suporte:</Text>
-                        <Text style={styles.instructions}>
-                            Vá até a aba localizar em sua home e clique para começar a buscar um suporte, assim que achar um Guincho disponível
-                            irá aparecer as informações do veículo de atendimento, preço e etc. Caso esteja de acordo clique em aceitar ou
-                            pule para procurar outro guincho.
-                        </Text>
-                    </View>
-                </LinearGradient>
-            </ScrollView>
-        </KeyboardAvoidingView>
-    );
+          {/* Conteúdo do tutorial */}
+          <View style={styles.content}>
+            <Text style={styles.title}>Tutorial para Motoristas - Como Atender Solicitações</Text>
+            <Text style={styles.step}>
+              1. Na tela inicial do app, localize o botão <Text style={styles.bold}>“Ficar Online”</Text> e clique nele para ativar seu status de disponibilidade.
+            </Text>
+            <Text style={styles.step}>
+              2. Ao ficar online, você estará disponível para receber solicitações de guincho de clientes próximos.
+            </Text>
+            <Text style={styles.step}>
+              3. Aguarde na tela principal até que uma solicitação apareça automaticamente.
+            </Text>
+            <Text style={styles.step}>
+              4. Quando receber uma solicitação, ela será exibida na tela com detalhes do cliente e do local.
+            </Text>
+            <Text style={styles.step}>
+              5. Você terá a opção de <Text style={styles.bold}>Aceitar</Text> a solicitação.
+            </Text>
+            <Text style={styles.step}>
+              6. Ao aceitar, o app abrirá o mapa mostrando a localização do cliente que está aguardando o atendimento.
+            </Text>
+            <Text style={styles.step}>
+              7. Siga as instruções do mapa para chegar até o cliente e realizar o suporte.
+            </Text>
+          </View>
+        </LinearGradient>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
 }
 
-// Estilos da página de suporte
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20
-    },
-    backButton: {
-        position: 'absolute',
-        top: 50,
-        left: 20,
-        backgroundColor: '#fff',
-        borderRadius: 20,
-        padding: 10,
-        zIndex: 1
-    },
-    backButtonText: {
-        fontSize: 18,
-        color: '#000'
-    },
-    logo: {
-        width: 150,
-        height: 150,
-        marginBottom: 30,
-    },
-    content: {
-        backgroundColor: '#fff',
-        borderRadius: 20,
-        padding: 20,
-        width: '100%',
-        alignItems: 'center',
-    },
-    title: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 10,
-        textAlign: 'center',
-        color: '#000'
-    },
-    instructions: {
-        fontSize: 16,
-        textAlign: 'center',
-        color: '#333',
-    },
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 10,
+    zIndex: 1,
+  },
+  backButtonText: {
+    fontSize: 18,
+    color: '#000',
+  },
+  content: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    width: '100%',
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
+    color: '#000',
+  },
+  step: {
+    fontSize: 16,
+    marginBottom: 12,
+    color: '#333',
+  },
+  bold: {
+    fontWeight: 'bold',
+  },
 });
-

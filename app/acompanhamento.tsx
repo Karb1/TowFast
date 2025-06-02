@@ -47,6 +47,7 @@ const AcompanhamentoScreen: React.FC = () => {
     }, []);
 
     useEffect(() => {
+        let isMounted = true;
         const checkSolicitacaoStatus = async () => {
             if (!id_solicitacao) {
                 console.error('ID da solicitação não encontrado');
@@ -74,23 +75,34 @@ const AcompanhamentoScreen: React.FC = () => {
                 }
 
                 const data: SolicitacaoResponse = await response.json();
+                
+                if (!isMounted) return;
+                
                 setSolicitacaoStatus(data.status);
 
                 // Redireciona baseado no status
                 if (data.status === 'Aceite') {
+                    // Limpa o intervalo antes de navegar
+                    clearInterval(intervalId);
                     // Salva os dados da solicitação no AsyncStorage
                     await AsyncStorage.setItem('@solicitacao_atual', JSON.stringify(data));
-                    router.push(`/tracking?solicitacaoId=${data.id_Solicitacao}`);
+                    router.push(`/tracking?id_solicitacao=${id_solicitacao}`);
                 } else if (data.status === 'Recusado') {
+                    // Limpa o intervalo antes de navegar
+                    clearInterval(intervalId);
                     Alert.alert('Solicitação Recusada', 'O guincho recusou sua solicitação.');
                     await AsyncStorage.removeItem('@solicitacao_atual');
                     router.push('/solicitacao');
                 }
 
-                setLoading(false);
+                if (isMounted) {
+                    setLoading(false);
+                }
             } catch (error) {
                 console.error('Erro ao verificar status:', error);
-                setLoading(false);
+                if (isMounted) {
+                    setLoading(false);
+                }
             }
         };
 
@@ -100,8 +112,11 @@ const AcompanhamentoScreen: React.FC = () => {
         // Configura o intervalo para verificar o status
         const intervalId = setInterval(checkSolicitacaoStatus, 5000); // Verifica a cada 5 segundos
 
-        // Limpa o intervalo quando o componente é desmontado
-        return () => clearInterval(intervalId);
+        // Limpa o intervalo e marca o componente como desmontado
+        return () => {
+            isMounted = false;
+            clearInterval(intervalId);
+        };
     }, [id_solicitacao]);
 
     return (

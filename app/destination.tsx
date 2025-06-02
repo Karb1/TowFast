@@ -6,8 +6,7 @@ import MapViewDirections from 'react-native-maps-directions';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { API_BASE_URL } from '../constants/ApiConfig';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import axios from 'axios';
+import { Ionicons } from '@expo/vector-icons';
 
 const GOOGLE_MAPS_APIKEY = 'AIzaSyDhDVQMG6eoOe0cGhxqYGxCZT9Yl0wI_Uo';
 
@@ -22,14 +21,7 @@ interface RouteData {
   status: string;
   dta_Solicitacao: string;
   destino: string;
-  codigo_Validacao_Inicio: string;
   codigo_Validacao_Fim: string;
-}
-
-interface Instruction {
-  distance: string;
-  duration: string;
-  instruction: string;
 }
 
 interface Coordinates {
@@ -37,25 +29,17 @@ interface Coordinates {
   longitude: number;
 }
 
-interface RouteCoordinates {
-  latitude: number;
-  longitude: number;
-}
-
-export default function RouteScreen() {
+export default function DestinationScreen() {
   const [routeData, setRouteData] = useState<RouteData | null>(null);
   const [currentLocation, setCurrentLocation] = useState<Coordinates | null>(null);
-  const [clientLocation, setClientLocation] = useState<Coordinates | null>(null);
   const [destinationLocation, setDestinationLocation] = useState<Coordinates | null>(null);
-  const [apiCallCount, setApiCallCount] = useState(0);
-  const [instructions, setInstructions] = useState<Instruction[]>([]);
-  const [totalTime, setTotalTime] = useState<number>(0);
-  const [routeCoordinates, setRouteCoordinates] = useState<RouteCoordinates[]>([]);
-  const [isNavigating, setIsNavigating] = useState(false);
-  const [locationSubscription, setLocationSubscription] = useState<any>(null);
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [validationCode, setValidationCode] = useState('');
   const [validationError, setValidationError] = useState('');
+  const [totalTime, setTotalTime] = useState<number>(0);
+  const [distancia, setDistancia] = useState<number>(0);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [locationSubscription, setLocationSubscription] = useState<Location.LocationSubscription | null>(null);
   const mapRef = useRef<MapView>(null);
   const { solicitacaoId, userId } = useLocalSearchParams();
   const router = useRouter();
@@ -70,26 +54,29 @@ export default function RouteScreen() {
           }
         });
 
-        if (!response.ok) {
-          throw new Error('Falha ao obter dados da rota');
-        }
+        if (!response.ok) throw new Error('Falha ao obter dados da rota');
 
         const data = await response.json();
-        setRouteData(data[0]);
+        const route = data[0];
+        setRouteData(route);
 
-        // Atualizar localização do motorista
-        if (data[0].latLongCliente) {
-          const [lat, long] = data[0].latLongCliente.split(',').map(Number);
-          if (!isNaN(lat) && !isNaN(long)) {
-            setClientLocation({ latitude: lat, longitude: long });
-          }
+        if (route.status_Corrida === 'Finalizado') {
+          router.push(`/home_motorista?userId=${userId}?idEndereco=${route.id_Endereco}`);
+          return;
         }
 
-        if (data[0].distancia) {
-          const distanciaKm = parseFloat(data[0].distancia);
-          const tempoEstimadoHoras = distanciaKm * 1.2 / 40;
-          const tempoEstimadoMinutos = Math.round(tempoEstimadoHoras * 60);
+        if (route.distancia) {
+          const distanciaKm = parseFloat(route.distancia);
+          const tempoEstimadoMinutos = Math.round(distanciaKm * 1.5 / 40 * 60);
+          setDistancia(distanciaKm);
           setTotalTime(tempoEstimadoMinutos);
+        }
+
+        if (route.destino) {
+          const [lat, lng] = route.destino.split(',').map(Number);
+          if (!isNaN(lat) && !isNaN(lng)) {
+            setDestinationLocation({ latitude: lat, longitude: lng });
+          }
         }
       } catch (error) {
         console.error('Erro ao carregar dados da rota:', error);
@@ -98,20 +85,13 @@ export default function RouteScreen() {
     };
 
     fetchRouteData();
-  }, [solicitacaoId]);
-
-  const handleReturn = () => {
-    if (locationSubscription) {
-      locationSubscription.remove();
-    }
-    router.push(`/home_guincho?userId=${userId}&solicitacaoId=${solicitacaoId}&preco=${routeData?.preco}&latLongCliente=${routeData?.latLongCliente}&destino=${routeData?.destino}`);
-  };
+    const interval = setInterval(fetchRouteData, 5000);
+    return () => clearInterval(interval);
+  }, [solicitacaoId, userId]);
 
   const startNavigation = async () => {
-    if (isNavigating) {
-      if (locationSubscription) {
-        locationSubscription.remove();
-      }
+    if (isNavigating && locationSubscription) {
+      locationSubscription.remove();
       setIsNavigating(false);
       return;
     }
@@ -136,65 +116,15 @@ export default function RouteScreen() {
         });
       }
     );
-
     setLocationSubscription(subscription);
   };
 
-  const fetchRouteDirections = async (origin: Coordinates, destination: Coordinates) => {
-    try {
-      const response = await axios.get(
-        `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&key=${GOOGLE_MAPS_APIKEY}`
-      );
-
-      if (response.data.routes.length > 0) {
-        const route = response.data.routes[0];
-        const points = route.overview_polyline.points;
-        const decodedPoints = decodePolyline(points);
-        setRouteCoordinates(decodedPoints);
-
-        const durationInSeconds = route.legs[0].duration.value;
-        setTotalTime(Math.round(durationInSeconds / 60));
-      }
-    } catch (error) {
-      console.error('Erro ao buscar direções:', error);
-    }
-  };
-
-  const decodePolyline = (encoded: string) => {
-    const points: RouteCoordinates[] = [];
-    let index = 0, lat = 0, lng = 0;
-
-    while (index < encoded.length) {
-      let shift = 0, result = 0;
-      let byte;
-      do {
-        byte = encoded.charCodeAt(index++) - 63;
-        result |= (byte & 0x1f) << shift;
-        shift += 5;
-      } while (byte >= 0x20);
-
-      const dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
-      lat += dlat;
-
-      shift = 0;
-      result = 0;
-      do {
-        byte = encoded.charCodeAt(index++) - 63;
-        result |= (byte & 0x1f) << shift;
-        shift += 5;
-      } while (byte >= 0x20);
-
-      const dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
-      lng += dlng;
-
-      points.push({
-        latitude: lat * 1e-5,
-        longitude: lng * 1e-5
-      });      
-    }
-
-    return points;
-  };
+  useEffect(() => {
+    startNavigation();
+    return () => {
+      if (locationSubscription) locationSubscription.remove();
+    };
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -208,49 +138,42 @@ export default function RouteScreen() {
               ref={mapRef}
               style={styles.map}
               initialRegion={{
-                latitude: -23.550520,
-                longitude: -46.633308,
+                latitude: currentLocation?.latitude || -23.550520,
+                longitude: currentLocation?.longitude || -46.633308,
                 latitudeDelta: 0.01,
                 longitudeDelta: 0.01
               }}
               followsUserLocation={true}
               showsUserLocation={true}
             >
-              {currentLocation && (
-                <Marker
-                  coordinate={{
-                    latitude: currentLocation.latitude,
-                    longitude: currentLocation.longitude
+              {currentLocation && destinationLocation && (
+                <MapViewDirections
+                  origin={currentLocation}
+                  destination={destinationLocation}
+                  apikey={GOOGLE_MAPS_APIKEY}
+                  strokeWidth={3}
+                  strokeColor="#025159"
+                  onReady={result => {
+                    const tempoEstimadoMinutos = Math.round((result.distance * 1.5 / 40) * 60);
+                    setDistancia(result.distance);
+                    setTotalTime(tempoEstimadoMinutos);
+                    mapRef.current?.fitToCoordinates(result.coordinates, {
+                      edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+                      animated: true,
+                    });
                   }}
-                  title="Sua Localização"
-                >
-                  <View style={{
-                    backgroundColor: 'white',
-                    padding: 8,
-                    borderRadius: 20,
-                    borderWidth: 2,
-                    borderColor: '#4CAF50'
-                  }}>
-                    <Ionicons name="car" size={24} color="#4CAF50" />
-                  </View>
-                </Marker>
+                />
               )}
-              {clientLocation && (
-                <Marker
-                  coordinate={{
-                    latitude: clientLocation.latitude,
-                    longitude: clientLocation.longitude
-                  }}
-                  title="Localização do Cliente"
-                >
+              {destinationLocation && (
+                <Marker coordinate={destinationLocation} title="Destino">
                   <View style={{
                     backgroundColor: 'white',
                     padding: 8,
                     borderRadius: 20,
                     borderWidth: 2,
-                    borderColor: '#2196F3'
+                    borderColor: '#FF0000'
                   }}>
-                    <Ionicons name="person" size={24} color="#2196F3" />
+                    <Ionicons name="location" size={24} color="#FF0000" />
                   </View>
                 </Marker>
               )}
@@ -274,34 +197,33 @@ export default function RouteScreen() {
 
           <View style={styles.infoContainer}>
             <View style={styles.infoCard}>
-              <Text style={styles.infoTitle}>Distância</Text>
-              <Text style={styles.infoValue}>{routeData?.distancia || 'Calculando...'} km</Text>
-            </View>
-            <View style={styles.infoCard}>
               <Text style={styles.infoTitle}>Tempo Estimado</Text>
               <Text style={styles.infoValue}>{totalTime || 'Calculando...'} min</Text>
+            </View>
+            <View style={styles.infoCard}>
+              <Text style={styles.infoTitle}>Distância</Text>
+              <Text style={styles.infoValue}>{distancia.toFixed(2)} km</Text>
             </View>
           </View>
 
           <TouchableOpacity
-            style={styles.navigationButton}
+            style={styles.finishButton}
             onPress={() => setShowValidationModal(true)}
           >
-            <Ionicons name="navigate" size={24} color="white" style={styles.buttonIcon} />
-            <Text style={styles.buttonText}>Iniciar Navegação</Text>
+            <Ionicons name="checkmark-circle" size={24} color="white" style={styles.buttonIcon} />
+            <Text style={styles.buttonText}>Finalizar Serviço</Text>
           </TouchableOpacity>
         </SafeAreaView>
       </LinearGradient>
-
       <Modal
         visible={showValidationModal}
-        transparent={true}
+        transparent
         animationType="fade"
         onRequestClose={() => setShowValidationModal(false)}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Digite o código de validação</Text>
+            <Text style={styles.modalTitle}>Digite o código de validação final</Text>
             {validationError ? <Text style={styles.errorText}>{validationError}</Text> : null}
             <TextInput
               style={styles.input}
@@ -330,7 +252,7 @@ export default function RouteScreen() {
                     return;
                   }
 
-                  if (validationCode === routeData?.codigo_Validacao_Inicio) {
+                  if (validationCode === routeData?.codigo_Validacao_Fim) {
                     try {
                       const response = await fetch(`${API_BASE_URL}/AtualizaCorrida`, {
                         method: 'PUT',
@@ -339,17 +261,15 @@ export default function RouteScreen() {
                         },
                         body: JSON.stringify({
                           id_Solicitacao: solicitacaoId,
-                          status: 'Em Andamento'
+                          status: 'Finalizada'
                         })
                       });
 
-                      if (!response.ok) {
-                        throw new Error('Falha ao atualizar o status da corrida');
-                      }
+                      if (!response.ok) throw new Error('Falha ao atualizar o status da corrida');
 
                       setShowValidationModal(false);
                       setValidationError('');
-                      router.push(`/destination?solicitacaoId=${solicitacaoId}&userId=${userId}`);
+                      router.push(`/home_guincho?solicitacaoId=${solicitacaoId}&userId=${userId}`);
                     } catch (error) {
                       console.error('Erro ao atualizar status:', error);
                       Alert.alert('Erro', 'Falha ao atualizar o status da corrida');
@@ -370,9 +290,7 @@ export default function RouteScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   mapContainer: {
     flex: 1,
     overflow: 'hidden',
@@ -380,11 +298,7 @@ const styles = StyleSheet.create({
     margin: 10,
     position: 'relative',
   },
-  map: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-  },
+  map: { flex: 1, width: '100%', height: '100%' },
   centerButton: {
     position: 'absolute',
     right: 16,
@@ -399,7 +313,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     zIndex: 1,
   },
-  navigationButton: {
+  finishButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -408,31 +322,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     margin: 10,
     elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
   },
-  buttonIcon: {
-    marginRight: 10,
-  },
-  validationCodeContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 20,
-    padding: 15,
-    margin: 10,
-    alignItems: 'center',
-  },
-  validationCodeTitle: {
-    fontSize: 18,
-    color: '#666',
-    marginBottom: 5,
-  },
-  validationCodeValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#025159',
-  },
+  buttonIcon: { marginRight: 10 },
   infoContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -441,20 +332,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     margin: 10,
   },
-  infoCard: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  infoTitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 5,
-  },
-  infoValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#025159',
-  },
+  infoCard: { alignItems: 'center', flex: 1 },
+  infoTitle: { fontSize: 14, color: '#666', marginBottom: 5 },
+  infoValue: { fontSize: 16, fontWeight: 'bold', color: '#025159' },
   modalContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -468,12 +348,7 @@ const styles = StyleSheet.create({
     width: '80%',
     alignItems: 'center',
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#025159',
-  },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, color: '#025159' },
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
@@ -482,15 +357,8 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: 15,
   },
-  errorText: {
-    color: 'red',
-    marginBottom: 10,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-  },
+  errorText: { color: 'red', marginBottom: 10 },
+  buttonContainer: { flexDirection: 'row', justifyContent: 'space-around', width: '100%' },
   button: {
     backgroundColor: '#025159',
     padding: 10,
@@ -498,11 +366,6 @@ const styles = StyleSheet.create({
     width: '45%',
     alignItems: 'center',
   },
-  buttonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  cancelButton: {
-    backgroundColor: '#666',
-  },
+  buttonText: { color: 'white', fontWeight: 'bold' },
+  cancelButton: { backgroundColor: '#666' },
 });

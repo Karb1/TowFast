@@ -46,6 +46,8 @@ export default function RootLayout() {
         <Stack.Screen name="Msolicitacao" />
         <Stack.Screen name="pesquisa" />
         <Stack.Screen name="route.tsx" />
+        <Stack.Screen name="solicitacao" />
+        <Stack.Screen name="tracking.tsx" />
       </Stack>
     </ThemeProvider>
   );

@@ -351,6 +351,111 @@ app.get('/GuinchopreSolicitacao', async (req, res) => {
     }
 });
 
+app.get('/corrida', async (req, res) => {
+    const { idSolicitacao } = req.query;
+
+    if (!idSolicitacao) {
+        return res.status(400).json({ message: 'O ID da solicitação é obrigatório.' });
+    }
+
+    try {
+        const { status, data } = await callApi(`corrida?idSolicitacao=${idSolicitacao}`, 'GET');
+
+        if (status >= 400) {
+            return res.status(status).json({ message: 'Erro ao buscar dados da solicitação.', error: data });
+        }
+
+        res.status(200).json(data);
+    } catch (error) {
+        console.error('Erro ao conectar com a API:', error);
+        res.status(500).json({ message: 'Erro ao conectar com o servidor.', error: error.message });
+    }
+});
+
+app.put('/AtualizaCorrida', async (req, res) => {
+    const { id_Solicitacao, status } = req.body;
+
+    if (!id_Solicitacao || status === undefined) {
+        return res.status(400).json({ message: 'Os campos id_Solicitacao e status são obrigatórios.' });
+    }
+
+    try {
+        const { status: responseStatus, data } = await callApi('AtualizaCorrida', 'PUT', { id_Solicitacao, status });
+
+        if (responseStatus >= 400) {
+            return res.status(responseStatus).json({ message: 'Erro ao atualizar o status da pré-solicitação.', error: data });
+        }
+
+        res.status(200).json({ message: 'Status da pré-solicitação atualizado com sucesso.' });
+    } catch (error) {
+        console.error('Erro ao conectar com a API:', error);
+        res.status(500).json({ message: 'Erro ao conectar com o servidor.', error: error.message });
+    }
+});
+
+// Endpoint: Buscar corridas finalizadas por idGuincho ou idMotorista
+app.post('/corridasfinalizadas', async (req, res) => {
+    const { idGuincho, idMotorista } = req.body;
+
+    if (!idGuincho && !idMotorista) {
+        return res.status(400).json({ message: 'Informe idGuincho ou idMotorista' });
+    }
+
+    try {
+        const { status, data } = await callApi('Finalizadas', 'POST', { idGuincho, idMotorista });
+
+        if (status >= 400) {
+            return res.status(status).json({ message: 'Erro na API.', error: data });
+        }
+
+        res.status(200).json(data);
+    } catch (error) {
+        console.error('Erro ao conectar com a API:', error);
+        res.status(500).json({ message: 'Erro ao conectar com o servidor.', error: error.message });
+    }
+});
+
+// Endpoint para obter info do usuário por idCliente
+app.get('/userinfo/:idCliente', async (req, res) => {
+    const { idCliente } = req.params;
+
+    if (!idCliente) {
+        return res.status(400).json({ message: 'O parâmetro idCliente é obrigatório.' });
+    }
+
+    try {
+        // Chama o endpoint GET da API C# que você passou
+        // Note que o endpoint espera GET com o idCliente na URL: user/{idCliente}
+        const url = `user/${idCliente}`;
+
+        // Faz a chamada manual, pois callApi está preparado para JSON no body,
+        // e aqui é GET sem body, então faremos fetch direto:
+        const fullUrl = `${BASE_API_URL}/${url}`;
+        const response = await fetch(fullUrl, { method: 'GET', agent: httpsAgent });
+        const responseText = await response.text();
+
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch {
+            data = responseText;
+        }
+
+        if (response.status === 404) {
+            return res.status(404).json({ message: 'Usuário não encontrado.' });
+        }
+        if (response.status >= 400) {
+            return res.status(response.status).json({ message: 'Erro na API.', error: data });
+        }
+
+        res.status(200).json(data);
+    } catch (error) {
+        console.error('Erro ao conectar com a API:', error);
+        res.status(500).json({ message: 'Erro ao conectar com o servidor.', error: error.message });
+    }
+});
+
+
 // Inicia o servidor Node.js
 app.listen(PORT, () => {
     console.log(`Servidor Node.js rodando na porta ${PORT}`);
